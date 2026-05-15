@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/faq_content_sheet.dart';
+import 'widgets/contact_form_sheet.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
@@ -45,10 +47,10 @@ class HelpSupportScreen extends StatelessWidget {
             // ⚡ QUICK TOPICS
             _sectionHeader("TOP TOPICS"),
             const SizedBox(height: 15),
-            _buildSupportTile("Buying on Vinty", Icons.shopping_bag_outlined),
-            _buildSupportTile("Selling & Payouts", Icons.sell_outlined),
-            _buildSupportTile("Shipping & Tracking", Icons.local_shipping_outlined),
-            _buildSupportTile("Refunds & Returns", Icons.assignment_return_outlined),
+            _buildSupportTile(context, "Buying on Vinty", Icons.shopping_bag_outlined),
+            _buildSupportTile(context, "Selling & Payouts", Icons.sell_outlined),
+            _buildSupportTile(context, "Shipping & Tracking", Icons.local_shipping_outlined),
+            _buildSupportTile(context, "Refunds & Returns", Icons.assignment_return_outlined),
 
             const SizedBox(height: 40),
 
@@ -60,6 +62,7 @@ class HelpSupportScreen extends StatelessWidget {
               "Chat with Us",
               "Average response: 5 mins",
               Icons.chat_bubble_outline_rounded,
+              isChat: true,
             ),
             const SizedBox(height: 12),
             _buildContactCard(
@@ -67,6 +70,7 @@ class HelpSupportScreen extends StatelessWidget {
               "Email Support",
               "Response within 24 hours",
               Icons.email_outlined,
+              isChat: false,
             ),
 
             const SizedBox(height: 50),
@@ -89,7 +93,7 @@ class HelpSupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSupportTile(String title, IconData icon) {
+  Widget _buildSupportTile(BuildContext context, String title, IconData icon) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -101,34 +105,51 @@ class HelpSupportScreen extends StatelessWidget {
         leading: Icon(icon, color: Colors.black, size: 20),
         title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
         trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-        onTap: () {},
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => FAQContentSheet(topicTitle: title),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildContactCard(BuildContext context, String title, String subtitle, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 28),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.syne(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(subtitle, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
-              ],
+  Widget _buildContactCard(BuildContext context, String title, String subtitle, IconData icon, {required bool isChat}) {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => ContactFormSheet(isChat: isChat),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 28),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.syne(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-        ],
+            const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+          ],
+        ),
       ),
     );
   }

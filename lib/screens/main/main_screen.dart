@@ -34,7 +34,7 @@ class _MainScreenState extends State<MainScreen> {
       HomeScreen(search: searchController.text),   // Index 0
       SwipeScreen(search: searchController.text),  // Index 1
       const SizedBox(),                            // Index 2 (Placeholder for Sell - opened as Modal)
-      const FavoritesScreen(),                     // Index 3
+      const FavoritesScreen(),                    // Index 3
       const ProfileScreen(),                       // Index 4
     ];
   }

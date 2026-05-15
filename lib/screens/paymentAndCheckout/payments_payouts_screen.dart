@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/cash_out_sheet.dart';
 
 class PaymentsPayoutsScreen extends StatelessWidget {
   const PaymentsPayoutsScreen({super.key});
@@ -27,7 +28,7 @@ class PaymentsPayoutsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 💰 WALLET BALANCE CARD
-            _buildBalanceCard(),
+            _buildBalanceCard(context),
 
             const SizedBox(height: 40),
 
@@ -39,8 +40,8 @@ class PaymentsPayoutsScreen extends StatelessWidget {
 
             TextButton.icon(
               onPressed: () {},
-              icon: const Icon(Icons.add, size: 18, color: Colors.blue),
-              label: Text("Add new method", style: GoogleFonts.inter(color: Colors.blue, fontWeight: FontWeight.w600)),
+              icon: const Icon(Icons.add, size: 18, color: Colors.black),
+              label: Text("Add new method", style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13)),
             ),
 
             const SizedBox(height: 40),
@@ -64,7 +65,7 @@ class PaymentsPayoutsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(25),
@@ -81,14 +82,22 @@ class PaymentsPayoutsScreen extends StatelessWidget {
           const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 55,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                elevation: 0,
               ),
-              onPressed: () {}, // Payout logic
-              child: Text("CASH OUT", style: GoogleFonts.syne(color: Colors.black, fontWeight: FontWeight.w800)),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const CashOutSheet(availableBalance: 1240.50),
+                );
+              },
+              child: Text("CASH OUT", style: GoogleFonts.syne(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.5)),
             ),
           )
         ],
@@ -112,7 +121,7 @@ class PaymentsPayoutsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14)),
                 Text(subtitle, style: GoogleFonts.inter(color: Colors.grey, fontSize: 12)),
               ],
             ),
@@ -133,8 +142,8 @@ class PaymentsPayoutsScreen extends StatelessWidget {
             decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
             child: Icon(
               isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-              size: 16,
-              color: isPositive ? Colors.green : Colors.red,
+              size: 14,
+              color: isPositive ? Colors.green.shade700 : Colors.black,
             ),
           ),
           const SizedBox(width: 15),
@@ -142,7 +151,7 @@ class PaymentsPayoutsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(type, style: GoogleFonts.inter(color: Colors.grey, fontSize: 12)),
               ],
             ),
@@ -151,7 +160,8 @@ class PaymentsPayoutsScreen extends StatelessWidget {
             amount,
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w800,
-              color: isPositive ? Colors.green : Colors.black,
+              fontSize: 14,
+              color: isPositive ? Colors.green.shade700 : Colors.black,
             ),
           ),
         ],

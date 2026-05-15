@@ -5,6 +5,10 @@ import '../../data/app_data.dart';
 import '../../services/listing_service.dart';
 import '../favorites/favorites_screen.dart';
 import '../cart/cart_screen.dart';
+import '../editProfile/edit_profile_screen.dart';
+import '../paymentAndCheckout/payments_payouts_screen.dart';
+import '../help/help_support.dart';
+import '../notifications/notifications_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,9 +38,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded,
-                color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.black),
           ),
           const SizedBox(width: 8),
         ],
@@ -61,15 +71,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Icons.favorite_outline_rounded,
               'My Wishlist',
               '${AppData.favorites.length} items',
-                  () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
             ),
             _menuItem(
               Icons.shopping_bag_outlined,
               'My Cart',
               '${AppData.cart.length} items',
-                  () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const CartScreen())),
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
             ),
             _menuItem(
               Icons.inventory_2_outlined,
@@ -80,10 +88,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             _sectionLabel('SETTINGS'),
             const SizedBox(height: 12),
-            _menuItem(Icons.person_outline_rounded, 'Edit Profile', '', () {}),
             _menuItem(
-                Icons.credit_card_outlined, 'Payments & Payouts', '', () {}),
-            _menuItem(Icons.help_outline_rounded, 'Help & Support', '', () {}),
+              Icons.person_outline_rounded,
+              'Edit Profile',
+              '',
+                  () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                );
+              },
+            ),
+            _menuItem(
+              Icons.credit_card_outlined,
+              'Payments & Payouts',
+              '',
+                  () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsPayoutsScreen()));
+              },
+            ),
+            _menuItem(
+              Icons.help_outline_rounded,
+              'Help & Support',
+              '',
+                  () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+              },
+            ),
             const SizedBox(height: 32),
             _buildLogoutButton(),
             const SizedBox(height: 40),
@@ -103,8 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.black, width: 1.5),
             image: const DecorationImage(
-              image: NetworkImage(
-                  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=500'),
+              image: NetworkImage('https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=500'),
               fit: BoxFit.cover,
             ),
           ),
@@ -133,14 +163,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            shape: BoxShape.circle,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: Colors.black,
+            ),
           ),
-          child: const Icon(Icons.edit_outlined,
-              size: 18, color: Colors.black),
         ),
       ],
     );
@@ -271,8 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _menuItem(
-      IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _menuItem(IconData icon, String title, String subtitle, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -307,8 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 13, color: Colors.black26),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: Colors.black26),
           ],
         ),
       ),
