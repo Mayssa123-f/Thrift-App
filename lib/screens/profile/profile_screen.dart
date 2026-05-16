@@ -9,6 +9,9 @@ import '../editProfile/edit_profile_screen.dart';
 import '../paymentAndCheckout/payments_payouts_screen.dart';
 import '../help/help_support.dart';
 import '../notifications/notifications_screen.dart';
+import '../../controllers/auth_controller.dart';
+import '../../models/user_model.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +22,36 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool isSellerMode = true;
+  final AuthController authController = AuthController();
+
+  UserModel? currentUser;
+  bool isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    try {
+      final user = await authController.getProfile();
+
+      if (!mounted) return;
+
+      setState(() {
+        currentUser = user;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,81 +79,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.black),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: Colors.black,
+            ),
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            _buildProfileHeader(),
-            const SizedBox(height: 25),
-            _buildModeToggle(),
-            const SizedBox(height: 28),
-            _buildDashboardLabel(),
-            const SizedBox(height: 14),
-            _buildStatsRow(),
-            const SizedBox(height: 32),
-            _sectionLabel('ACCOUNT'),
-            const SizedBox(height: 12),
-            _menuItem(
-              Icons.favorite_outline_rounded,
-              'My Wishlist',
-              '${AppData.favorites.length} items',
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  _buildProfileHeader(),
+                  const SizedBox(height: 25),
+                  _buildModeToggle(),
+                  const SizedBox(height: 28),
+                  _buildDashboardLabel(),
+                  const SizedBox(height: 14),
+                  _buildStatsRow(),
+                  const SizedBox(height: 32),
+                  _sectionLabel('ACCOUNT'),
+                  const SizedBox(height: 12),
+                  _menuItem(
+                    Icons.favorite_outline_rounded,
+                    'My Wishlist',
+                    '${AppData.favorites.length} items',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FavoritesScreen(),
+                      ),
+                    ),
+                  ),
+                  _menuItem(
+                    Icons.shopping_bag_outlined,
+                    'My Cart',
+                    '${AppData.cart.length} items',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CartScreen()),
+                    ),
+                  ),
+                  _menuItem(
+                    Icons.inventory_2_outlined,
+                    'My Listings',
+                    '${ListingService.all.length} active',
+                    () {},
+                  ),
+                  const SizedBox(height: 20),
+                  _sectionLabel('SETTINGS'),
+                  const SizedBox(height: 12),
+                  _menuItem(
+                    Icons.person_outline_rounded,
+                    'Edit Profile',
+                    '',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _menuItem(
+                    Icons.credit_card_outlined,
+                    'Payments & Payouts',
+                    '',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PaymentsPayoutsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _menuItem(
+                    Icons.help_outline_rounded,
+                    'Help & Support',
+                    '',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HelpSupportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  _buildLogoutButton(),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-            _menuItem(
-              Icons.shopping_bag_outlined,
-              'My Cart',
-              '${AppData.cart.length} items',
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
-            ),
-            _menuItem(
-              Icons.inventory_2_outlined,
-              'My Listings',
-              '${ListingService.all.length} active',
-                  () {},
-            ),
-            const SizedBox(height: 20),
-            _sectionLabel('SETTINGS'),
-            const SizedBox(height: 12),
-            _menuItem(
-              Icons.person_outline_rounded,
-              'Edit Profile',
-              '',
-                  () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                );
-              },
-            ),
-            _menuItem(
-              Icons.credit_card_outlined,
-              'Payments & Payouts',
-              '',
-                  () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsPayoutsScreen()));
-              },
-            ),
-            _menuItem(
-              Icons.help_outline_rounded,
-              'Help & Support',
-              '',
-                  () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
-              },
-            ),
-            const SizedBox(height: 32),
-            _buildLogoutButton(),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
     );
   }
 
@@ -133,19 +191,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.black, width: 1.5),
-            image: const DecorationImage(
-              image: NetworkImage('https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=500'),
-              fit: BoxFit.cover,
-            ),
+            image:
+                currentUser?.profileImageUrl != null &&
+                    currentUser!.profileImageUrl!.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(currentUser!.profileImageUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
+          child:
+              currentUser?.profileImageUrl == null ||
+                  currentUser!.profileImageUrl!.isEmpty
+              ? const Icon(Icons.person, size: 35, color: Colors.grey)
+              : null,
         ),
+
         const SizedBox(width: 18),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Mayssa Faraj',
+                currentUser?.fullName ?? 'User',
                 style: GoogleFonts.syne(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -154,11 +222,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                isSellerMode ? 'Verified Seller' : 'Casual Shopper',
-                style: GoogleFonts.inter(
-                  color: Colors.black45,
-                  fontSize: 13,
-                ),
+                currentUser?.role == 'seller'
+                    ? 'Verified Seller'
+                    : 'Casual Shopper',
+                style: GoogleFonts.inter(color: Colors.black45, fontSize: 13),
               ),
             ],
           ),
@@ -167,7 +234,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+              MaterialPageRoute(
+                builder: (context) => const EditProfileScreen(),
+              ),
             );
           },
           child: Container(
@@ -249,23 +318,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildStatsRow() {
     final stats = isSellerMode
         ? [
-      {'label': 'Listings', 'value': '${ListingService.all.length}'},
-      {'label': 'Sales', 'value': '28'},
-      {'label': 'Views', 'value': '340'},
-    ]
+            {'label': 'Listings', 'value': '${ListingService.all.length}'},
+            {'label': 'Sales', 'value': '28'},
+            {'label': 'Views', 'value': '340'},
+          ]
         : [
-      {'label': 'Saved', 'value': '${AppData.favorites.length}'},
-      {'label': 'Cart', 'value': '${AppData.cart.length}'},
-      {'label': 'Orders', 'value': '5'},
-    ];
+            {'label': 'Saved', 'value': '${AppData.favorites.length}'},
+            {'label': 'Cart', 'value': '${AppData.cart.length}'},
+            {'label': 'Orders', 'value': '5'},
+          ];
 
     return Row(
       children: stats.map((s) {
         return Expanded(
           child: Container(
-            margin: EdgeInsets.only(
-              right: s == stats.last ? 0 : 10,
-            ),
+            margin: EdgeInsets.only(right: s == stats.last ? 0 : 10),
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -312,7 +379,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _menuItem(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _menuItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -347,7 +419,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: Colors.black26),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13,
+              color: Colors.black26,
+            ),
           ],
         ),
       ),
@@ -356,7 +432,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildLogoutButton() {
     return GestureDetector(
-      onTap: () {},
+      onTap: () async {
+        await authController.logout();
+
+        if (!mounted) return;
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 18),

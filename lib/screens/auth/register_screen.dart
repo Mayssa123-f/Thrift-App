@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/screens/main/main_screen.dart';
+import 'package:thrift_app/widgets/google_auth_botton.dart';
 import '../../constants/app_colors.dart';
+import '../../controllers/auth_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool isObscure = true;
+  final AuthController authController = AuthController();
+  bool isLoading = false;
 
   // Consistent input decoration helper
   InputDecoration _inputStyle(String label, {Widget? suffix}) {
@@ -107,7 +112,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   "Password",
                   suffix: IconButton(
                     icon: Icon(
-                      isObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      isObscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                       color: AppColors.darkGray,
                       size: 20,
                     ),
@@ -124,29 +131,102 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 height: 58,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.black, // High-contrast black button
+                    backgroundColor:
+                        AppColors.black, // High-contrast black button
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () {
-                    // Logic for account creation later
-                  },
-                  child: Text(
-                    "Create Account",
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+
+                          try {
+                            await authController.register(
+                              nameController.text,
+                              emailController.text,
+                              passwordController.text,
+                            );
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Account created successfully"),
+                              ),
+                            );
+
+                            Navigator.pop(context);
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                ),
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => isLoading = false);
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          "Create Account",
+                          style: GoogleFonts.syne(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
               const SizedBox(height: 30),
 
               // FOOTER
+              GoogleAuthButton(
+                isLoading: isLoading,
+                onPressed: () async {
+                  setState(() => isLoading = true);
+
+                  try {
+                    await authController.continueWithGoogle();
+
+                    if (!mounted) return;
+
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MainScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
+                      ),
+                    );
+                  } finally {
+                    if (mounted) {
+                      setState(() => isLoading = false);
+                    }
+                  }
+                },
+              ),
+
+              const SizedBox(height: 30),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -163,7 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ],

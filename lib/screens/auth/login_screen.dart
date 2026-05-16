@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/widgets/google_auth_botton.dart';
 import '../../constants/app_colors.dart'; // Ensure this matches your path
 import 'register_screen.dart'; // ✅ IMPORTANT: Import your RegisterScreen file
 import '../main/main_screen.dart';
+import '../../controllers/auth_controller.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -14,7 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isObscure = true;
-
+  final AuthController authController = AuthController();
+  bool isLoading = false;
   InputDecoration _inputStyle(String label, {Widget? suffix}) {
     return InputDecoration(
       labelText: label,
@@ -53,7 +57,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.black,
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 30),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
 
               const SizedBox(height: 30),
@@ -86,7 +94,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   "Password",
                   suffix: IconButton(
                     icon: Icon(
-                      isObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      isObscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                       color: Colors.grey,
                       size: 20,
                     ),
@@ -101,7 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {},
                   child: Text(
                     "Forgot Password?",
-                    style: GoogleFonts.inter(color: Colors.black54, fontSize: 13),
+                    style: GoogleFonts.inter(
+                      color: Colors.black54,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
@@ -120,19 +133,50 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MainScreen()),
-                    );
-                  },
-                  child: Text(
-                    "Sign In",
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+
+                          try {
+                            await authController.login(
+                              emailController.text,
+                              passwordController.text,
+                            );
+
+                            if (!mounted) return;
+
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MainScreen(),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                ),
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => isLoading = false);
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          "Sign In",
+                          style: GoogleFonts.syne(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
@@ -143,12 +187,53 @@ class _LoginScreenState extends State<LoginScreen> {
                   Expanded(child: Divider(color: Colors.grey.shade300)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Text("OR", style: GoogleFonts.inter(color: Colors.grey, fontSize: 12)),
+                    child: Text(
+                      "OR",
+                      style: GoogleFonts.inter(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                   Expanded(child: Divider(color: Colors.grey.shade300)),
                 ],
               ),
 
+              const SizedBox(height: 30),
+
+       GoogleAuthButton(
+  isLoading: isLoading,
+  onPressed: () async {
+    setState(() => isLoading = true);
+
+    try {
+      await authController.continueWithGoogle();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  },
+),
               const SizedBox(height: 30),
 
               Row(
@@ -163,7 +248,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       // ✅ NAVIGATION LINKED HERE
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
                       );
                     },
                     child: Text(
@@ -173,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ],
