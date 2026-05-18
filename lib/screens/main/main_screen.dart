@@ -61,9 +61,11 @@ class _MainScreenState extends State<MainScreen> {
     children: pages,
   ),
 
-  floatingActionButton: FloatingActionButton.extended(
+ floatingActionButton: Padding(
+  padding: const EdgeInsets.only(bottom: 95),
+  child: FloatingActionButton(
     backgroundColor: Colors.black,
-    elevation: 3,
+    elevation: 4,
     onPressed: () {
       Navigator.push(
         context,
@@ -72,19 +74,13 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
     },
-    icon: const Icon(
+    child: const Icon(
       Icons.chat_bubble_outline_rounded,
       color: Colors.white,
-    ),
-    label: Text(
-      "Messages",
-      style: GoogleFonts.syne(
-        color: Colors.white,
-        fontWeight: FontWeight.w700,
-      ),
+      size: 24,
     ),
   ),
-
+),
   floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
   bottomNavigationBar: _buildBottomNav(),

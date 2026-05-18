@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/models/user_model.dart';
+import 'package:thrift_app/services/auth_service.dart';
 import '../../controllers/chat_controller.dart';
 import '../../models/chat_message_model.dart';
 import '../../models/conversation_model.dart';
+import 'dart:async';
 
 class ChatRoomScreen extends StatefulWidget {
   final ConversationModel conversation;
@@ -17,42 +20,52 @@ class ChatRoomScreen extends StatefulWidget {
 }
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
+  final ScrollController scrollController = ScrollController();
   final ChatController chatController = ChatController();
   final TextEditingController messageController = TextEditingController();
 
   bool isLoading = true;
   bool isSending = false;
   List<ChatMessageModel> messages = [];
-
+  Timer? refreshTimer;
   @override
   void initState() {
     super.initState();
     _loadMessages();
+
+refreshTimer = Timer.periodic(
+  const Duration(seconds: 2),
+  (_) => _loadMessages(),
+);    
   }
+void _scrollToBottom() {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!scrollController.hasClients) return;
 
-  Future<void> _loadMessages() async {
-    try {
-      final data = await chatController.getMessages(widget.conversation.id);
+    scrollController.animateTo(
+      scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  });
+}
+ 
+Future<void> _loadMessages() async {
+ 
 
-      if (!mounted) return;
+  
+    final data = await chatController.getMessages(
+      widget.conversation.id,
+    );
 
-      setState(() {
-        messages = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() => isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    }
-  }
-
+    setState(() {
+      messages = data;
+      isLoading = false;
+    });
+    _scrollToBottom();
+}
   Future<void> _sendMessage() async {
     final text = messageController.text.trim();
 
@@ -72,6 +85,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         messages.add(newMessage);
         messageController.clear();
       });
+      _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
 
@@ -174,100 +188,129 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  Widget _messageBubble(ChatMessageModel message) {
-    // Temporary: until we add current user id globally
-    final bool isMine = true;
+ Widget _messageBubble(ChatMessageModel message) {
+  final currentUserId = AuthService.currentUser?.id;
 
-    if (message.messageType == 'system') {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            message.messageText ?? "",
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
-          ),
-        ),
-      );
-    }
+  final bool isMine = message.senderId == currentUserId;
 
-    if (message.messageType == 'offer') {
-      return Align(
-        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          width: 260,
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3ECFF),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Offer Sent",
-                style: GoogleFonts.syne(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message.messageText ?? "",
-                style: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Pending seller response",
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.black45,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+  // SYSTEM MESSAGE
+  if (message.messageType == 'system') {
+    return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: const BoxConstraints(maxWidth: 280),
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
-          color: isMine ? Colors.black : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(18),
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           message.messageText ?? "",
           style: GoogleFonts.inter(
-            color: isMine ? Colors.white : Colors.black,
-            fontSize: 14,
+            fontSize: 12,
+            color: Colors.black54,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    messageController.dispose();
-    super.dispose();
+  // OFFER MESSAGE
+  if (message.messageType == 'offer') {
+    return Align(
+      alignment:
+          isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        width: 260,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3ECFF),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isMine ? 20 : 6),
+            bottomRight: Radius.circular(isMine ? 6 : 20),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Offer",
+              style: GoogleFonts.syne(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              message.messageText ?? "",
+              style: GoogleFonts.inter(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              "Waiting for response",
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: Colors.black45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+
+  // NORMAL TEXT MESSAGE
+  return Align(
+    alignment:
+        isMine ? Alignment.centerRight : Alignment.centerLeft,
+    child: Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
+      ),
+      constraints: const BoxConstraints(maxWidth: 280),
+      decoration: BoxDecoration(
+        color: isMine ? Colors.black : Colors.grey.shade100,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(18),
+          topRight: const Radius.circular(18),
+          bottomLeft: Radius.circular(isMine ? 18 : 4),
+          bottomRight: Radius.circular(isMine ? 4 : 18),
+        ),
+      ),
+      child: Text(
+        message.messageText ?? "",
+        style: GoogleFonts.inter(
+          color: isMine ? Colors.white : Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
+  );
+}
+  @override
+void dispose() {
+  refreshTimer?.cancel();
+  messageController.dispose();
+  super.dispose();
+  scrollController.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +391,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
+                    controller: scrollController,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
