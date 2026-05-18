@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import '../models/product_model.dart';
+import 'package:thrift_app/models/product_model.dart';
+
 import 'api_client.dart';
 
 class ProductService {

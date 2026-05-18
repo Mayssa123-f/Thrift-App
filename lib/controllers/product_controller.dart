@@ -1,4 +1,6 @@
-import '../models/product_model.dart';
+
+import 'package:thrift_app/models/product_model.dart';
+
 import '../services/product_service.dart';
 
 class ProductController {
