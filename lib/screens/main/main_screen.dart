@@ -70,28 +70,29 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
       appBar: _buildAppBar(),
+
       body: IndexedStack(index: currentIndex, children: pages),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.black,
-        elevation: 3,
-        onPressed: openMessages,
-        icon: const Icon(
-          Icons.chat_bubble_outline_rounded,
-          color: Colors.white,
-        ),
-        label: Text(
-          "Messages",
-          style: GoogleFonts.syne(
+
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 95),
+        child: FloatingActionButton(
+          backgroundColor: Colors.black,
+          elevation: 4,
+          onPressed: openMessages,
+          child: const Icon(
+            Icons.chat_bubble_outline_rounded,
             color: Colors.white,
-            fontWeight: FontWeight.w700,
+            size: 24,
           ),
         ),
       ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -207,8 +208,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBottomNav() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-      height: 70,
+      margin: const EdgeInsets.fromLTRB(14, 0, 24, 30),
+      height: 60,
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(25),
@@ -222,48 +223,67 @@ class _MainScreenState extends State<MainScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            if (index == 2) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  fullscreenDialog: true,
-                  builder: (context) => const MultiStepSellScreen(),
-                ),
-              );
-              return;
-            }
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
 
-            setState(() {
-              currentIndex = index;
-
-              if (index == 3) {
-                _buildPages();
+            onTap: (index) {
+              if (index == 2) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (context) => const MultiStepSellScreen(),
+                  ),
+                );
+                return;
               }
-            });
-          },
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          backgroundColor: Colors.transparent,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white.withOpacity(0.4),
-          elevation: 0,
-          items: [
-            _navItem(Icons.grid_view_rounded, "Home"),
-            _navItem(Icons.style_rounded, "Swipe"),
-            _navItem(Icons.add_circle_rounded, "Sell"),
-            _navItem(Icons.favorite_border_rounded, "Wishlist"),
-            _navItem(Icons.person_outline_rounded, "Profile"),
-          ],
+
+              setState(() {
+                currentIndex = index;
+
+                if (index == 3) {
+                  _buildPages();
+                }
+              });
+            },
+
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
+
+            selectedFontSize: 0,
+            unselectedFontSize: 0,
+
+            iconSize: 26,
+
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white.withOpacity(0.45),
+
+            items: [
+              _navItem(Icons.grid_view_rounded),
+              _navItem(Icons.style_rounded),
+              _navItem(Icons.add_circle_rounded),
+              _navItem(Icons.favorite_border_rounded),
+              _navItem(Icons.person_outline_rounded),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  BottomNavigationBarItem _navItem(IconData icon, String label) {
-    return BottomNavigationBarItem(icon: Icon(icon, size: 26), label: label);
+  BottomNavigationBarItem _navItem(IconData icon) {
+    return BottomNavigationBarItem(
+      icon: Center(child: Icon(icon, size: 26)),
+      label: '',
+    );
   }
 }

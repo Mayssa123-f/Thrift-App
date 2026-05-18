@@ -5,6 +5,9 @@ import 'api_client.dart';
 
 class AuthService {
   final Dio dio = ApiClient.dio;
+
+  static UserModel? currentUser;
+
   Future<UserModel> loginWithGoogle(String idToken) async {
     try {
       final response = await dio.post(
@@ -16,7 +19,8 @@ class AuthService {
 
       await TokenStorage.saveToken(data['token']);
 
-      return UserModel.fromJson(data['user']);
+      currentUser = UserModel.fromJson(data['user']);
+      return currentUser!;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Google login failed');
     }
@@ -29,14 +33,18 @@ class AuthService {
     try {
       final response = await dio.post(
         '/auth/login',
-        data: {'email': email.trim(), 'password': password},
+        data: {
+          'email': email.trim(),
+          'password': password,
+        },
       );
 
       final data = response.data;
 
       await TokenStorage.saveToken(data['token']);
 
-      return UserModel.fromJson(data['user']);
+      currentUser = UserModel.fromJson(data['user']);
+      return currentUser!;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Login failed');
     }
@@ -61,7 +69,8 @@ class AuthService {
 
       await TokenStorage.saveToken(data['token']);
 
-      return UserModel.fromJson(data['user']);
+      currentUser = UserModel.fromJson(data['user']);
+      return currentUser!;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Registration failed');
     }
@@ -71,7 +80,8 @@ class AuthService {
     try {
       final response = await dio.get('/auth/profile');
 
-      return UserModel.fromJson(response.data['user']);
+      currentUser = UserModel.fromJson(response.data['user']);
+      return currentUser!;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Failed to get profile');
     }
@@ -94,7 +104,8 @@ class AuthService {
         },
       );
 
-      return UserModel.fromJson(response.data['user']);
+      currentUser = UserModel.fromJson(response.data['user']);
+      return currentUser!;
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to update profile',
@@ -103,12 +114,16 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    currentUser = null;
     await TokenStorage.clearToken();
   }
 
   Future<void> forgotPassword(String email) async {
     try {
-      await dio.post('/auth/forgot-password', data: {'email': email.trim()});
+      await dio.post(
+        '/auth/forgot-password',
+        data: {'email': email.trim()},
+      );
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to send reset code',

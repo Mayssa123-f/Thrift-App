@@ -4,6 +4,8 @@ import 'package:thrift_app/models/product_model.dart';
 
 import '../../constants/app_colors.dart';
 import '../../services/favorites_service.dart';
+import '../../controllers/chat_controller.dart';
+import '../chat/chat_room_screen.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final ProductModel product;
@@ -19,40 +21,40 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   bool isFav = false;
   bool isLoadingFav = true;
+  bool isOpeningChat = false;
 
   @override
   void initState() {
     super.initState();
 
-    selectedSize = widget.product.sizes.isNotEmpty
-        ? widget.product.sizes.first
-        : '';
+    selectedSize =
+        widget.product.sizes.isNotEmpty ? widget.product.sizes.first : '';
 
     _initFavorite();
   }
 
-  /// 🔥 FETCH FAVORITE STATUS FROM BACKEND
   Future<void> _initFavorite() async {
     try {
-      final result =
-      await FavoritesService.isFavorite(widget.product.id);
+      final result = await FavoritesService.isFavorite(widget.product.id);
+
+      if (!mounted) return;
 
       setState(() {
         isFav = result;
         isLoadingFav = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => isLoadingFav = false);
     }
   }
 
-  /// ❤️ TOGGLE FAVORITE (BACKEND)
   Future<void> _toggleFav() async {
     if (isLoadingFav) return;
 
     try {
       setState(() {
-        isFav = !isFav; // optimistic UI
+        isFav = !isFav;
       });
 
       if (isFav) {
@@ -63,19 +65,47 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         _showSnack('Removed from favorites');
       }
     } catch (e) {
-      // rollback on error
       setState(() => isFav = !isFav);
       _showSnack('Failed to update favorites');
     }
   }
 
-  /// 🛑 CART DISABLED FOR NOW (as you requested)
   void _addToCart() {
     _showSnack('${widget.product.title} added to cart (mock)');
   }
 
-  void _messageSeller() {
-    _showSnack('Messaging coming soon');
+  Future<void> _messageSeller() async {
+    if (isOpeningChat) return;
+
+    setState(() => isOpeningChat = true);
+
+    try {
+      final conversation = await ChatController().startConversation(
+        productId: widget.product.id,
+        sellerId: widget.product.sellerId,
+      );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatRoomScreen(
+            conversation: conversation,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      _showSnack(
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isOpeningChat = false);
+      }
+    }
   }
 
   void _showSnack(String message) {
@@ -109,7 +139,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             pinned: true,
             backgroundColor: Colors.white,
             elevation: 0,
-
             leading: GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
@@ -125,7 +154,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
               ),
             ),
-
             actions: [
               GestureDetector(
                 onTap: _toggleFav,
@@ -138,21 +166,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ),
                   child: isLoadingFav
                       ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : Icon(
-                    isFav
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border,
-                    size: 20,
-                    color: isFav ? Colors.red : Colors.black,
-                  ),
+                          isFav
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border,
+                          size: 20,
+                          color: isFav ? Colors.red : Colors.black,
+                        ),
                 ),
               ),
             ],
-
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
                 tag: product.image ?? product.id,
@@ -163,7 +190,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               ),
             ),
           ),
-
           SliverToBoxAdapter(
             child: Container(
               decoration: const BoxDecoration(
@@ -191,9 +217,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -215,13 +239,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
                   _sellerRow(product),
-
                   const SizedBox(height: 24),
-
                   Text(
                     'About this piece',
                     style: GoogleFonts.syne(
@@ -229,9 +249,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   Text(
                     product.description,
                     style: GoogleFonts.inter(
@@ -240,9 +258,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       color: Colors.grey.shade600,
                     ),
                   ),
-
                   const SizedBox(height: 32),
-
                   Text(
                     'Select size',
                     style: GoogleFonts.syne(
@@ -250,34 +266,28 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
                   Wrap(
                     spacing: 10,
                     children: product.sizes.map((size) {
                       final selected = size == selectedSize;
 
                       return GestureDetector(
-                        onTap: () =>
-                            setState(() => selectedSize = size),
+                        onTap: () => setState(() => selectedSize = size),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 18,
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: selected
-                                ? Colors.black
-                                : Colors.grey.shade100,
+                            color:
+                                selected ? Colors.black : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             size,
                             style: GoogleFonts.syne(
-                              color: selected
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: selected ? Colors.white : Colors.black,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -291,7 +301,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ],
       ),
-
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
         decoration: BoxDecoration(
@@ -308,8 +317,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: _messageSeller,
-                child: const Text('Message'),
+                onPressed: isOpeningChat ? null : _messageSeller,
+                child: isOpeningChat
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Message'),
               ),
             ),
             const SizedBox(width: 12),
@@ -349,7 +364,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         color: bg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
