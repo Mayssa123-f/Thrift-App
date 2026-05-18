@@ -6,6 +6,7 @@ import '../../constants/app_colors.dart';
 import '../../controllers/product_controller.dart';
 import '../../models/product_model.dart';
 import '../../widgets/product_card.dart';
+import '../../services/favorites_service.dart';
 import '../product/product_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,8 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedStyle = 'All';
 
   bool isLoading = true;
-
   List<ProductModel> products = [];
+
+  /// store favorites locally for fast UI updates
+  Set<int> favoriteIds = {};
 
   final List<String> styleTags = [
     'All',
@@ -41,6 +44,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+    _loadFavorites();
+  }
+
+  /// load favorites from backend
+  Future<void> _loadFavorites() async {
+    try {
+      final favs = await FavoritesService.getFavorites();
+
+      if (!mounted) return;
+
+      setState(() {
+        favoriteIds = favs.map((e) => e.id).toSet();
+      });
+    } catch (_) {}
   }
 
   @override
@@ -73,7 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
       );
     }
   }
@@ -83,6 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return heights[index % heights.length];
   }
 
+  bool _isFav(int id) => favoriteIds.contains(id);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,14 +114,13 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const SizedBox(height: 10),
 
+          /// STYLE FILTER
           SizedBox(
             height: 55,
             width: double.infinity,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: styleTags.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -119,7 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isActive ? Colors.black : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isActive ? Colors.black : Colors.grey.shade200,
+                        color: isActive
+                            ? Colors.black
+                            : Colors.grey.shade200,
                       ),
                     ),
                     child: Text(
@@ -138,43 +162,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 18),
 
+          /// GRID
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : products.isEmpty
                 ? Center(
-                    child: Text(
-                      'No items found',
-                      style: GoogleFonts.syne(
-                        color: Colors.grey.shade400,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
+              child: Text(
+                'No items found',
+                style: GoogleFonts.syne(
+                  color: Colors.grey.shade400,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
                 : MasonryGridView.count(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 120),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 18,
-                    crossAxisSpacing: 14,
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final product = products[index];
+              padding:
+              const EdgeInsets.fromLTRB(18, 0, 18, 120),
+              crossAxisCount: 2,
+              mainAxisSpacing: 18,
+              crossAxisSpacing: 14,
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                final product = products[index];
 
-                      return ProductCard(
-                        product: product,
-                        imageHeight: _cardHeight(index),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ProductDetailsScreen(product: product),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                return ProductCard(
+                  product: product,
+                  imageHeight: _cardHeight(index),
+
+                  /// IMPORTANT:
+                  /// ❌ removed isFavorite (not supported in your ProductCard)
+                  /// ProductCard already handles favorites internally via service
+
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailsScreen(
+                          product: product,
+                        ),
+                      ),
+                    );
+
+                    /// refresh favorites after returning
+                    _loadFavorites();
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

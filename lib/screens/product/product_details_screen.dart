@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/models/product_model.dart';
-import '../../constants/app_colors.dart';
 
-import '../../services/cart_service.dart';
+import '../../constants/app_colors.dart';
 import '../../services/favorites_service.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
@@ -18,46 +17,82 @@ class ProductDetailsScreen extends StatefulWidget {
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   String selectedSize = '';
 
+  bool isFav = false;
+  bool isLoadingFav = true;
+
   @override
   void initState() {
     super.initState();
+
     selectedSize = widget.product.sizes.isNotEmpty
         ? widget.product.sizes.first
         : '';
+
+    _initFavorite();
   }
 
-  bool get isFav => false;
-  bool get inCart => false;
+  /// 🔥 FETCH FAVORITE STATUS FROM BACKEND
+  Future<void> _initFavorite() async {
+    try {
+      final result =
+      await FavoritesService.isFavorite(widget.product.id);
 
-  void _toggleFav() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(_snackBar('Favorites will be connected next'));
+      setState(() {
+        isFav = result;
+        isLoadingFav = false;
+      });
+    } catch (_) {
+      setState(() => isLoadingFav = false);
+    }
   }
 
+  /// ❤️ TOGGLE FAVORITE (BACKEND)
+  Future<void> _toggleFav() async {
+    if (isLoadingFav) return;
+
+    try {
+      setState(() {
+        isFav = !isFav; // optimistic UI
+      });
+
+      if (isFav) {
+        await FavoritesService.addFavorite(widget.product.id);
+        _showSnack('Added to favorites ❤️');
+      } else {
+        await FavoritesService.removeFavorite(widget.product.id);
+        _showSnack('Removed from favorites');
+      }
+    } catch (e) {
+      // rollback on error
+      setState(() => isFav = !isFav);
+      _showSnack('Failed to update favorites');
+    }
+  }
+
+  /// 🛑 CART DISABLED FOR NOW (as you requested)
   void _addToCart() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(_snackBar('${widget.product.title} added to cart'));
+    _showSnack('${widget.product.title} added to cart (mock)');
   }
 
   void _messageSeller() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(_snackBar('Messaging coming soon'));
+    _showSnack('Messaging coming soon');
   }
 
-  SnackBar _snackBar(String message) {
-    return SnackBar(
-      content: Text(
-        message,
-        style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+        ),
+        duration: const Duration(milliseconds: 900),
+        backgroundColor: Colors.black87,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
       ),
-      duration: const Duration(milliseconds: 900),
-      backgroundColor: Colors.black87,
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.all(20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     );
   }
 
@@ -74,6 +109,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             pinned: true,
             backgroundColor: Colors.white,
             elevation: 0,
+
             leading: GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
@@ -89,6 +125,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
               ),
             ),
+
             actions: [
               GestureDetector(
                 onTap: _toggleFav,
@@ -99,15 +136,23 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    isFav ? Icons.favorite_rounded : Icons.favorite_border,
+                  child: isLoadingFav
+                      ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : Icon(
+                    isFav
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border,
                     size: 20,
                     color: isFav ? Colors.red : Colors.black,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
             ],
+
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
                 tag: product.image ?? product.id,
@@ -123,7 +168,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               padding: const EdgeInsets.fromLTRB(15, 30, 15, 70),
               child: Column(
@@ -132,7 +179,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   Row(
                     children: [
                       _pill(
-                        product.styleTag ?? 'no Tags',
+                        product.styleTag ?? 'No Tag',
                         Colors.black,
                         Colors.white,
                       ),
@@ -156,19 +203,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           style: GoogleFonts.syne(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
-                            color: Colors.black,
-                            height: 1.05,
-                            letterSpacing: -1,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       Text(
                         product.formattedPrice,
                         style: GoogleFonts.syne(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: Colors.black,
                         ),
                       ),
                     ],
@@ -185,8 +227,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     style: GoogleFonts.syne(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: Colors.black,
                     ),
                   ),
 
@@ -201,15 +241,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
 
                   Text(
                     'Select size',
                     style: GoogleFonts.syne(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: Colors.black,
                     ),
                   ),
 
@@ -217,20 +255,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
                   Wrap(
                     spacing: 10,
-                    runSpacing: 10,
                     children: product.sizes.map((size) {
-                      final isSelected = size == selectedSize;
+                      final selected = size == selectedSize;
 
                       return GestureDetector(
-                        onTap: () => setState(() => selectedSize = size),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
+                        onTap: () =>
+                            setState(() => selectedSize = size),
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 18,
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: isSelected
+                            color: selected
                                 ? Colors.black
                                 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(12),
@@ -238,19 +275,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           child: Text(
                             size,
                             style: GoogleFonts.syne(
-                              color: isSelected ? Colors.white : Colors.black,
+                              color: selected
+                                  ? Colors.white
+                                  : Colors.black,
                               fontWeight: FontWeight.w700,
-                              fontSize: 13,
                             ),
                           ),
                         ),
                       );
                     }).toList(),
                   ),
-
-                  const SizedBox(height: 32),
-
-                  _completeYourLookSection(),
                 ],
               ),
             ),
@@ -273,49 +307,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: _messageSeller,
-                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
-                label: Text(
-                  'Message',
-                  style: GoogleFonts.syne(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black,
-                  side: BorderSide(color: Colors.grey.shade300),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
+                child: const Text('Message'),
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: inCart ? Colors.grey.shade200 : Colors.black,
-                  foregroundColor: inCart ? Colors.black : Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                  backgroundColor: Colors.black,
                 ),
                 onPressed: _addToCart,
-                child: Text(
-                  inCart ? 'In Cart' : 'Add to Cart',
-                  style: GoogleFonts.syne(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                    fontSize: 13,
-                  ),
-                ),
+                child: const Text('Add to Cart'),
               ),
             ),
           ],
@@ -325,198 +329,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _sellerRow(ProductModel product) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Colors.grey.shade100),
-            bottom: BorderSide(color: Colors.grey.shade200),
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundImage: NetworkImage(
+            product.sellerImage ?? 'https://via.placeholder.com/150',
           ),
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 21,
-              backgroundImage: NetworkImage(
-                product.sellerImage ?? 'https://via.placeholder.com/150',
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.seller,
-                    style: GoogleFonts.syne(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
-                    ),
-                  ),
-                  Text(
-                    'Verified seller',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 15,
-              color: Colors.black45,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _completeYourLookSection() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Complete Your Look ✨',
-                  style: GoogleFonts.syne(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              Text(
-                'Powered by AI',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  color: Colors.grey.shade500,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          Text(
-            'AI style suggestions to complete your fit',
-            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
-          ),
-
-          const SizedBox(height: 18),
-
-          SizedBox(
-            height: 165,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _fitItem(
-                  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=600',
-                  'Oversized Tee',
-                  '\$16',
-                ),
-                const SizedBox(width: 14),
-                _fitItem(
-                  'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?q=80&w=600',
-                  'Baggy Pants',
-                  '\$28',
-                ),
-                const SizedBox(width: 14),
-                _fitItem(
-                  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=600',
-                  'Chunky Sneakers',
-                  '\$42',
-                ),
-                const SizedBox(width: 14),
-                _fitItem(
-                  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=600',
-                  'Silver Chain',
-                  '\$12',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fitItem(String image, String title, String price) {
-    return SizedBox(
-      width: 100,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  image,
-                  height: 100,
-                  width: 100,
-                  fit: BoxFit.cover,
-                ),
-              ),
-
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, size: 16, color: Colors.black),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            price,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
-          ),
-        ],
-      ),
+        const SizedBox(width: 12),
+        Text(product.seller),
+      ],
     );
   }
 
@@ -527,15 +349,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         color: bg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.syne(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: textColor,
-          letterSpacing: 0.5,
-        ),
-      ),
+      child: Text(label),
     );
   }
 }

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../constants/app_colors.dart';
-import '../../data/app_data.dart';
-import '../../models/product.dart';
+import '../../models/product_model.dart';
 import '../../services/favorites_service.dart';
-import '../../widgets/product_card.dart';
-import '../product/product_details_screen.dart';
 import '../product/product_details_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -16,7 +14,32 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  List<Product> get items => AppData.favorites;
+  List<ProductModel> favorites = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  /// 🔥 FETCH FROM DATABASE
+  Future<void> _loadFavorites() async {
+    try {
+      setState(() => isLoading = true);
+
+      final result = await FavoritesService.getFavorites();
+
+      if (!mounted) return;
+
+      setState(() {
+        favorites = result;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,48 +59,81 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
         ),
       ),
-      body: items.isEmpty
+
+      /// 🔥 LOADING
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+
+      /// 🔥 EMPTY STATE
+          : favorites.isEmpty
           ? _buildEmptyState()
+
+      /// 🔥 GRID FROM DB
           : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-              itemCount: items.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 15,
-                childAspectRatio: 0.65,
-              ),
-              itemBuilder: (context, index) {
-                final product = items[index];
-                return GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Favorites will be connected to backend next',
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Text(
-                        product.title,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.syne(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+        itemCount: favorites.length,
+        gridDelegate:
+        const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 20,
+          crossAxisSpacing: 15,
+          childAspectRatio: 0.65,
+        ),
+        itemBuilder: (context, index) {
+          final product = favorites[index];
+
+          return GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailsScreen(
+                    product: product,
                   ),
-                );
-              },
+                ),
+              );
+
+              /// 🔥 refresh after coming back
+              _loadFavorites();
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(20),
+                image: product.image != null
+                    ? DecorationImage(
+                  image: NetworkImage(product.image!),
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: Container(
+                alignment: Alignment.bottomCenter,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.6),
+                    ],
+                  ),
+                ),
+                child: Text(
+                  product.title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.syne(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
+          );
+        },
+      ),
     );
   }
 
@@ -89,7 +145,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           Icon(
             Icons.favorite_outline_rounded,
             size: 70,
-            color: Colors.grey.shade200,
+            color: Colors.grey.shade300,
           ),
           const SizedBox(height: 16),
           Text(
@@ -103,7 +159,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           const SizedBox(height: 8),
           Text(
             'Swipe right or tap ❤️ to save items',
-            style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
+            style: GoogleFonts.inter(
+              color: Colors.grey.shade500,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
