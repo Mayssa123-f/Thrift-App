@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/product.dart';
+import '../models/product_model.dart';
 import '../services/favorites_service.dart';
 import '../services/cart_service.dart';
 
 class ProductCard extends StatefulWidget {
-  final Product product;
+  final ProductModel product;
   final VoidCallback? onTap;
   final double imageHeight;
 
@@ -21,23 +21,29 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  bool get isFav => FavoritesService.isFavorite(widget.product);
+  bool get isFav => false;
 
   void _toggleFav() {
-    setState(() => FavoritesService.toggle(widget.product));
-  }
-
-  void _addToCart() {
-    final wasInCart = CartService.isInCart(widget.product);
-
-    CartService.add(widget.product);
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          wasInCart
-              ? '${widget.product.title} is already in your cart'
-              : '${widget.product.title} added to cart',
+          'Favorites backend coming next',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+        ),
+        duration: const Duration(milliseconds: 900),
+        backgroundColor: Colors.black87,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
+
+  void _addToCart() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${widget.product.title} added to cart',
           style: GoogleFonts.inter(fontWeight: FontWeight.w500),
         ),
         duration: const Duration(milliseconds: 900),
@@ -78,17 +84,19 @@ class _ProductCardState extends State<ProductCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              
                 SizedBox(
                   height: widget.imageHeight,
                   child: Hero(
-                    tag: widget.product.image,
+                    tag: widget.product.image ?? widget.product.id,
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(26),
                         color: Colors.grey.shade100,
                         image: DecorationImage(
-                          image: NetworkImage(widget.product.image),
+                          image: NetworkImage(
+                            widget.product.image ??
+                                'https://via.placeholder.com/500',
+                          ),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -132,7 +140,7 @@ class _ProductCardState extends State<ProductCard> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                widget.product.price,
+                                widget.product.formattedPrice,
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -187,7 +195,6 @@ class _ProductCardState extends State<ProductCard> {
 
                 const SizedBox(height: 6),
 
-     
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Row(
@@ -229,7 +236,7 @@ class _ProductCardState extends State<ProductCard> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.product.category,
+                          widget.product.category ?? 'Item',
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             color: Colors.grey.shade700,
