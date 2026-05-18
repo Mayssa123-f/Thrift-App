@@ -159,7 +159,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             );
 
-                            Navigator.pop(context);
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MainScreen(),
+                              ),
+                              (route) => false,
+                            );
                           } catch (e) {
                             if (!mounted) return;
 

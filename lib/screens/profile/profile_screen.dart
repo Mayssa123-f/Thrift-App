@@ -57,36 +57,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'MY VINTY',
-          style: GoogleFonts.syne(
-            fontWeight: FontWeight.w800,
-            color: Colors.black,
-            fontSize: 22,
-            letterSpacing: -0.5,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(),
-                ),
-              );
-            },
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: Colors.white,
+      //   elevation: 0,
+      //   title: Text(
+      //     'MY VINTY',
+      //     style: GoogleFonts.syne(
+      //       fontWeight: FontWeight.w800,
+      //       color: Colors.black,
+      //       fontSize: 22,
+      //       letterSpacing: -0.5,
+      //     ),
+      //   ),
+      //   actions: [
+      //     IconButton(
+      //       onPressed: () {
+      //         Navigator.push(
+      //           context,
+      //           MaterialPageRoute(
+      //             builder: (context) => const NotificationsScreen(),
+      //           ),
+      //         );
+      //       },
+      //       icon: const Icon(
+      //         Icons.notifications_none_rounded,
+      //         color: Colors.black,
+      //       ),
+      //     ),
+         
+         
+      //     const SizedBox(width: 8),
+      //   ],
+      // ),
+   
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

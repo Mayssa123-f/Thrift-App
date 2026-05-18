@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/screens/auth/forget_password_screen.dart';
 import 'package:thrift_app/widgets/google_auth_botton.dart';
 import '../../constants/app_colors.dart'; // Ensure this matches your path
 import 'register_screen.dart'; // ✅ IMPORTANT: Import your RegisterScreen file
@@ -108,7 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
                   child: Text(
                     "Forgot Password?",
                     style: GoogleFonts.inter(
@@ -201,39 +209,39 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 30),
 
-       GoogleAuthButton(
-  isLoading: isLoading,
-  onPressed: () async {
-    setState(() => isLoading = true);
+              GoogleAuthButton(
+                isLoading: isLoading,
+                onPressed: () async {
+                  setState(() => isLoading = true);
 
-    try {
-      await authController.continueWithGoogle();
+                  try {
+                    await authController.continueWithGoogle();
 
-      if (!mounted) return;
+                    if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const MainScreen(),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MainScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    }
-  },
-),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
+                      ),
+                    );
+                  } finally {
+                    if (mounted) {
+                      setState(() => isLoading = false);
+                    }
+                  }
+                },
+              ),
               const SizedBox(height: 30),
 
               Row(

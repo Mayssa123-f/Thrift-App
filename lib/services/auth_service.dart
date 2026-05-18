@@ -42,13 +42,13 @@ class AuthService {
     }
   }
 
-  Future<void> register({
+  Future<UserModel> register({
     required String fullName,
     required String email,
     required String password,
   }) async {
     try {
-      await dio.post(
+      final response = await dio.post(
         '/auth/register',
         data: {
           'full_name': fullName.trim(),
@@ -56,6 +56,12 @@ class AuthService {
           'password': password,
         },
       );
+
+      final data = response.data;
+
+      await TokenStorage.saveToken(data['token']);
+
+      return UserModel.fromJson(data['user']);
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Registration failed');
     }
@@ -98,5 +104,36 @@ class AuthService {
 
   Future<void> logout() async {
     await TokenStorage.clearToken();
+  }
+
+  Future<void> forgotPassword(String email) async {
+    try {
+      await dio.post('/auth/forgot-password', data: {'email': email.trim()});
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to send reset code',
+      );
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await dio.post(
+        '/auth/reset-password',
+        data: {
+          'email': email.trim(),
+          'code': code.trim(),
+          'newPassword': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to reset password',
+      );
+    }
   }
 }

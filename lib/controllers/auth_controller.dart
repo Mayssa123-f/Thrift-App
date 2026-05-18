@@ -26,7 +26,11 @@ class AuthController {
     return await _authService.login(email: email, password: password);
   }
 
-  Future<void> register(String fullName, String email, String password) async {
+  Future<UserModel> register(
+    String fullName,
+    String email,
+    String password,
+  ) async {
     if (fullName.trim().isEmpty || email.trim().isEmpty || password.isEmpty) {
       throw Exception('All fields are required');
     }
@@ -35,7 +39,7 @@ class AuthController {
       throw Exception('Password must be at least 6 characters');
     }
 
-    await _authService.register(
+    return await _authService.register(
       fullName: fullName,
       email: email,
       password: password,
@@ -66,5 +70,33 @@ class AuthController {
 
   Future<void> logout() async {
     await TokenStorage.clearToken();
+  }
+
+  Future<void> forgotPassword(String email) async {
+    if (email.trim().isEmpty) {
+      throw Exception('Email is required');
+    }
+
+    await _authService.forgotPassword(email);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    if (email.trim().isEmpty || code.trim().isEmpty || newPassword.isEmpty) {
+      throw Exception('All fields are required');
+    }
+
+    if (newPassword.length < 6) {
+      throw Exception('Password must be at least 6 characters');
+    }
+
+    await _authService.resetPassword(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+    );
   }
 }
