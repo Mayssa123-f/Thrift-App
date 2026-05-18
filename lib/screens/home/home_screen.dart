@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+
 import '../../constants/app_colors.dart';
 import '../../data/mock_products.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
 import '../product/product_details_screen.dart';
-import '../product/product_details_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   final String search;
+
   const HomeScreen({super.key, required this.search});
 
   @override
@@ -18,16 +21,34 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedCategory = 'All';
 
   final List<String> categories = [
-    'All', 'Vintage', 'Streetwear', 'Shoes', 'Accessories', 'Luxury'
+    'All',
+    'Vintage',
+    'Streetwear',
+    'Shoes',
+    'Accessories',
+    'Luxury',
+    'Y2K',
+    'Minimal',
+    'Grunge',
   ];
-
   List<Product> get filteredProducts {
     final byCategory = MockProducts.byCategory(selectedCategory);
+
     if (widget.search.isEmpty) return byCategory;
-    return byCategory.where((p) =>
-    p.title.toLowerCase().contains(widget.search.toLowerCase()) ||
-        p.tag.toLowerCase().contains(widget.search.toLowerCase())
-    ).toList();
+
+    return byCategory.where((p) {
+      final search = widget.search.toLowerCase();
+
+      return p.title.toLowerCase().contains(search) ||
+          p.tag.toLowerCase().contains(search) ||
+          p.category.toLowerCase().contains(search) ||
+          p.seller.toLowerCase().contains(search);
+    }).toList();
+  }
+
+  double _cardHeight(int index) {
+    final pattern = [270.0, 340.0, 300.0, 250.0, 315.0];
+    return pattern[index % pattern.length];
   }
 
   @override
@@ -38,33 +59,41 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const SizedBox(height: 10),
 
-          // CATEGORY ROW
           SizedBox(
-            height: 45,
-            child: ListView.builder(
+            height: 56,
+            width: double.infinity,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final cat = categories[index];
                 final isActive = cat == selectedCategory;
+
                 return GestureDetector(
-                  onTap: () => setState(() => selectedCategory = cat),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => selectedCategory = cat);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isActive ? Colors.black : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isActive ? Colors.black : Colors.grey.shade200,
                       ),
                     ),
                     child: Text(
                       cat,
-                      style: GoogleFonts.syne(
-                        fontSize: 13,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: isActive ? Colors.white : Colors.black,
                       ),
@@ -75,44 +104,43 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // PRODUCT GRID
           Expanded(
             child: filteredProducts.isEmpty
                 ? Center(
-              child: Text(
-                'No items found',
-                style: GoogleFonts.syne(
-                  color: Colors.grey.shade400,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-                : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(15, 0, 15, 100),
-              itemCount: filteredProducts.length,
-              gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 15,
-                childAspectRatio: 0.65,
-              ),
-              itemBuilder: (context, index) {
-                final product = filteredProducts[index];
-                return ProductCard(
-                  product: product,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ProductDetailsScreen(product: product),
+                    child: Text(
+                      'No items found',
+                      style: GoogleFonts.syne(
+                        color: Colors.grey.shade400,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
+                  )
+                : MasonryGridView.count(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 120),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 14,
+                    itemCount: filteredProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = filteredProducts[index];
+
+                      return ProductCard(
+                        product: product,
+                        imageHeight: _cardHeight(index),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProductDetailsScreen(product: product),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/screens/notifications/notifications_screen.dart';
 import '../../constants/app_colors.dart';
 import '../home/home_screen.dart';
 import '../swipe/swipe_screen.dart';
@@ -8,6 +9,7 @@ import '../profile/profile_screen.dart';
 import '../sell/multi_step_sell_screen.dart'; // Make sure this path is correct
 import '../cart/cart_screen.dart';
 import '../../services/cart_service.dart';
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -31,11 +33,11 @@ class _MainScreenState extends State<MainScreen> {
 
   void _updatePages() {
     pages = [
-      HomeScreen(search: searchController.text),   // Index 0
-      SwipeScreen(search: searchController.text),  // Index 1
-      const SizedBox(),                            // Index 2 (Placeholder for Sell - opened as Modal)
-      const FavoritesScreen(),                    // Index 3
-      const ProfileScreen(),                       // Index 4
+      HomeScreen(search: searchController.text), // Index 0
+      SwipeScreen(search: searchController.text), // Index 1
+      const SizedBox(), // Index 2 (Placeholder for Sell - opened as Modal)
+      const FavoritesScreen(), // Index 3
+      const ProfileScreen(), // Index 4
     ];
   }
 
@@ -54,10 +56,7 @@ class _MainScreenState extends State<MainScreen> {
       appBar: _buildAppBar(),
 
       // 2. ERROR FIX: Handle the PageView/Index logic carefully
-      body: IndexedStack(
-        index: currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: currentIndex, children: pages),
 
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -71,14 +70,32 @@ class _MainScreenState extends State<MainScreen> {
       title: isSearching ? _buildSearchField() : _buildLogo(),
       actions: [
         IconButton(
-          icon: Icon(isSearching ? Icons.close_rounded : Icons.search_rounded, color: Colors.black),
+          icon: Icon(
+            isSearching ? Icons.close_rounded : Icons.search_rounded,
+            color: Colors.black,
+          ),
           onPressed: () => setState(() {
             isSearching = !isSearching;
             if (!isSearching) searchController.clear();
           }),
         ),
         _buildCartButton(),
-        const SizedBox(width: 12),
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationsScreen(),
+              ),
+            );
+          },
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Colors.black,
+          ),
+        ),
+
+        const SizedBox(width: 5),
       ],
     );
   }
@@ -156,7 +173,13 @@ class _MainScreenState extends State<MainScreen> {
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
@@ -196,9 +219,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   BottomNavigationBarItem _navItem(IconData icon, String label) {
-    return BottomNavigationBarItem(
-      icon: Icon(icon, size: 26),
-      label: label,
-    );
+    return BottomNavigationBarItem(icon: Icon(icon, size: 26), label: label);
   }
 }
