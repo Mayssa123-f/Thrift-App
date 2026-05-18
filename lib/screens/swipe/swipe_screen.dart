@@ -10,10 +10,7 @@ import '../product/product_details_screen.dart';
 class SwipeScreen extends StatefulWidget {
   final String search;
 
-  const SwipeScreen({
-    super.key,
-    required this.search,
-  });
+  const SwipeScreen({super.key, required this.search});
 
   @override
   State<SwipeScreen> createState() => _SwipeScreenState();
@@ -34,30 +31,23 @@ class _SwipeScreenState extends State<SwipeScreen> {
     _stack = List.from(MockProducts.all);
   }
 
-  Product? get _current =>
-      _stack.isNotEmpty ? _stack.last : null;
+  Product? get _current => _stack.isNotEmpty ? _stack.last : null;
 
   // ❤️ LEFT = FAVORITE
   double get _favoriteOpacity =>
-      (_dragX < 0
-          ? (-_dragX / _swipeThreshold).clamp(0, 1)
-          : 0);
+      (_dragX < 0 ? (-_dragX / _swipeThreshold).clamp(0, 1) : 0);
 
   // ❌ RIGHT = SKIP
   double get _skipOpacity =>
-      (_dragX > 0
-          ? (_dragX / _swipeThreshold).clamp(0, 1)
-          : 0);
+      (_dragX > 0 ? (_dragX / _swipeThreshold).clamp(0, 1) : 0);
 
-  double get _rotation =>
-      (_dragX / 300).clamp(-0.25, 0.25);
+  double get _rotation => (_dragX / 300).clamp(-0.25, 0.25);
 
   void _onDragEnd() {
     // 👉 RIGHT = SKIP ❌
     if (_dragX > _swipeThreshold) {
       _swipeRight();
     }
-
     // 👉 LEFT = FAVORITE ❤️
     else if (_dragX < -_swipeThreshold) {
       _swipeLeft();
@@ -81,9 +71,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
     FavoritesService.toggle(_current!);
 
-    _showSnack(
-      '${_current!.title} added to favorites ❤️',
-    );
+    _showSnack('${_current!.title} added to favorites ❤️');
 
     _removeTop();
   }
@@ -93,9 +81,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
     CartService.add(_current!);
 
-    _showSnack(
-      '${_current!.title} added to cart 🛒',
-    );
+    _showSnack('${_current!.title} added to cart 🛒');
 
     _removeTop();
   }
@@ -126,17 +112,13 @@ class _SwipeScreenState extends State<SwipeScreen> {
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w500,
-          ),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
         ),
         duration: const Duration(milliseconds: 900),
         backgroundColor: Colors.black87,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -149,7 +131,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-
             const SizedBox(height: 25),
 
             // HEADER
@@ -180,194 +161,193 @@ class _SwipeScreenState extends State<SwipeScreen> {
               child: _stack.isEmpty
                   ? _buildEmptyState()
                   : Stack(
-                alignment: Alignment.center,
-                children: [
-
-                  // BACK CARD
-                  if (_stack.length > 1)
-                    Positioned(
-                      bottom: 0,
-                      child: Transform.scale(
-                        scale: 0.93,
-                        child: _buildCard(
-                          _stack[_stack.length - 2],
-                          isBackground: true,
-                        ),
-                      ),
-                    ),
-
-                  // TOP CARD
-                  GestureDetector(
-                    onPanStart: (_) {
-                      setState(() {
-                        _isDragging = true;
-                      });
-                    },
-
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _dragX += details.delta.dx;
-                        _dragY += details.delta.dy;
-                      });
-                    },
-
-                    onPanEnd: (_) {
-                      _onDragEnd();
-                    },
-
-                    onTap: () {
-                      if (_current != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ProductDetailsScreen(
-                                  product: _current!,
-                                ),
+                      alignment: Alignment.center,
+                      children: [
+                        // BACK CARD
+                        if (_stack.length > 1)
+                          Positioned(
+                            bottom: 0,
+                            child: Transform.scale(
+                              scale: 0.93,
+                              child: _buildCard(
+                                _stack[_stack.length - 2],
+                                isBackground: true,
+                              ),
+                            ),
                           ),
-                        );
-                      }
-                    },
 
-                    child: Transform.translate(
-                      offset: Offset(
-                        _dragX,
-                        _dragY * 0.4,
-                      ),
+                        // TOP CARD
+                        GestureDetector(
+                          onPanStart: (_) {
+                            setState(() {
+                              _isDragging = true;
+                            });
+                          },
 
-                      child: Transform.rotate(
-                        angle: _rotation,
+                          onPanUpdate: (details) {
+                            setState(() {
+                              _dragX += details.delta.dx;
+                              _dragY += details.delta.dy;
+                            });
+                          },
 
-                        child: Stack(
-                          children: [
+                          onPanEnd: (_) {
+                            _onDragEnd();
+                          },
 
-                            _buildCard(_current!),
+                          onTap: () {
+                            if (_current != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Swipe details will be connected to backend next',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
 
-                            // ❌ RIGHT SWIPE OVERLAY
-                            if (_dragX > 0)
-                              Positioned.fill(
-                                child: AnimatedOpacity(
-                                  opacity: _skipOpacity,
-                                  duration: Duration.zero,
+                          child: Transform.translate(
+                            offset: Offset(_dragX, _dragY * 0.4),
 
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius:
-                                      BorderRadius.circular(30),
-                                      color: Colors.red.withOpacity(0.15),
-                                    ),
+                            child: Transform.rotate(
+                              angle: _rotation,
 
-                                    child: Align(
-                                      alignment: Alignment.topRight,
+                              child: Stack(
+                                children: [
+                                  _buildCard(_current!),
 
-                                      child: Padding(
-                                        padding:
-                                        const EdgeInsets.all(24),
+                                  // ❌ RIGHT SWIPE OVERLAY
+                                  if (_dragX > 0)
+                                    Positioned.fill(
+                                      child: AnimatedOpacity(
+                                        opacity: _skipOpacity,
+                                        duration: Duration.zero,
 
-                                        child: Transform.rotate(
-                                          angle: 0.4,
-
-                                          child: Container(
-                                            padding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              30,
                                             ),
+                                            color: Colors.red.withOpacity(0.15),
+                                          ),
 
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: Colors.red,
-                                                width: 2.5,
-                                              ),
+                                          child: Align(
+                                            alignment: Alignment.topRight,
 
-                                              borderRadius:
-                                              BorderRadius.circular(8),
-                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(24),
 
-                                            child: Text(
-                                              'SKIP',
-                                              style: GoogleFonts.syne(
-                                                color: Colors.red,
-                                                fontWeight:
-                                                FontWeight.w800,
-                                                fontSize: 22,
-                                                letterSpacing: 2,
+                                              child: Transform.rotate(
+                                                angle: 0.4,
+
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6,
+                                                      ),
+
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Colors.red,
+                                                      width: 2.5,
+                                                    ),
+
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+
+                                                  child: Text(
+                                                    'SKIP',
+                                                    style: GoogleFonts.syne(
+                                                      color: Colors.red,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 22,
+                                                      letterSpacing: 2,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              ),
 
-                            // ❤️ LEFT SWIPE OVERLAY
-                            if (_dragX < 0)
-                              Positioned.fill(
-                                child: AnimatedOpacity(
-                                  opacity: _favoriteOpacity,
-                                  duration: Duration.zero,
+                                  // ❤️ LEFT SWIPE OVERLAY
+                                  if (_dragX < 0)
+                                    Positioned.fill(
+                                      child: AnimatedOpacity(
+                                        opacity: _favoriteOpacity,
+                                        duration: Duration.zero,
 
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius:
-                                      BorderRadius.circular(30),
-
-                                      color: Colors.green.withOpacity(0.15),
-                                    ),
-
-                                    child: Align(
-                                      alignment: Alignment.topLeft,
-
-                                      child: Padding(
-                                        padding:
-                                        const EdgeInsets.all(24),
-
-                                        child: Transform.rotate(
-                                          angle: -0.4,
-
-                                          child: Container(
-                                            padding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              30,
                                             ),
 
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: Colors.green,
-                                                width: 2.5,
-                                              ),
-
-                                              borderRadius:
-                                              BorderRadius.circular(8),
+                                            color: Colors.green.withOpacity(
+                                              0.15,
                                             ),
+                                          ),
 
-                                            child: Text(
-                                              'SAVE',
-                                              style: GoogleFonts.syne(
-                                                color: Colors.green,
-                                                fontWeight:
-                                                FontWeight.w800,
-                                                fontSize: 22,
-                                                letterSpacing: 2,
+                                          child: Align(
+                                            alignment: Alignment.topLeft,
+
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(24),
+
+                                              child: Transform.rotate(
+                                                angle: -0.4,
+
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6,
+                                                      ),
+
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Colors.green,
+                                                      width: 2.5,
+                                                    ),
+
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+
+                                                  child: Text(
+                                                    'SAVE',
+                                                    style: GoogleFonts.syne(
+                                                      color: Colors.green,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 22,
+                                                      letterSpacing: 2,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                ],
                               ),
-                          ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
 
             // BUTTONS
@@ -379,11 +359,9 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 ),
 
                 child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                   children: [
-
                     // ❤️ FAVORITE LEFT
                     _actionBtn(
                       icon: Icons.favorite_rounded,
@@ -421,10 +399,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     );
   }
 
-  Widget _buildCard(
-      Product product, {
-        bool isBackground = false,
-      }) {
+  Widget _buildCard(Product product, {bool isBackground = false}) {
     final size = MediaQuery.of(context).size;
 
     return Container(
@@ -435,9 +410,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         borderRadius: BorderRadius.circular(30),
 
         border: Border.all(
-          color: isBackground
-              ? Colors.transparent
-              : Colors.grey.shade200,
+          color: isBackground ? Colors.transparent : Colors.grey.shade200,
         ),
 
         image: DecorationImage(
@@ -454,10 +427,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
 
-            colors: [
-              Colors.transparent,
-              Colors.black.withOpacity(0.75),
-            ],
+            colors: [Colors.transparent, Colors.black.withOpacity(0.75)],
 
             stops: const [0.55, 1.0],
           ),
@@ -470,14 +440,12 @@ class _SwipeScreenState extends State<SwipeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
-
             // SELLER
             Row(
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundImage:
-                  NetworkImage(product.sellerImage),
+                  backgroundImage: NetworkImage(product.sellerImage),
                 ),
 
                 const SizedBox(width: 8),
@@ -510,7 +478,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
             // PRICE
             Row(
               children: [
-
                 Text(
                   product.price,
                   style: GoogleFonts.inter(
@@ -531,8 +498,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
 
-                    borderRadius:
-                    BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8),
                   ),
 
                   child: Text(
@@ -551,10 +517,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
             Text(
               'Tap for details  ·  Drag to decide',
-              style: GoogleFonts.inter(
-                color: Colors.white38,
-                fontSize: 11,
-              ),
+              style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
             ),
           ],
         ),
@@ -568,12 +531,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
 
         children: [
-
-          Icon(
-            Icons.style_rounded,
-            size: 80,
-            color: Colors.grey.shade200,
-          ),
+          Icon(Icons.style_rounded, size: 80, color: Colors.grey.shade200),
 
           const SizedBox(height: 20),
 
@@ -590,10 +548,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
           Text(
             'New drops coming soon.',
-            style: GoogleFonts.inter(
-              color: Colors.grey.shade500,
-              fontSize: 14,
-            ),
+            style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
           ),
 
           const SizedBox(height: 30),
@@ -602,10 +557,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
             onTap: _resetStack,
 
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 30,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
 
               decoration: BoxDecoration(
                 color: Colors.black,
@@ -645,16 +597,10 @@ class _SwipeScreenState extends State<SwipeScreen> {
         decoration: BoxDecoration(
           color: bg,
           shape: BoxShape.circle,
-          border: border != null
-              ? Border.all(color: border)
-              : null,
+          border: border != null ? Border.all(color: border) : null,
         ),
 
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: size * 0.42,
-        ),
+        child: Icon(icon, color: iconColor, size: size * 0.42),
       ),
     );
   }

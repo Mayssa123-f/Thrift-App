@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/models/product_model.dart';
 import '../../constants/app_colors.dart';
-import '../../models/product.dart';
+
 import '../../services/cart_service.dart';
 import '../../services/favorites_service.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
-  final Product product;
+  final ProductModel product;
 
   const ProductDetailsScreen({super.key, required this.product});
 
@@ -25,33 +26,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         : '';
   }
 
-  bool get isFav => FavoritesService.isFavorite(widget.product);
-  bool get inCart => CartService.isInCart(widget.product);
+  bool get isFav => false;
+  bool get inCart => false;
 
   void _toggleFav() {
-    FavoritesService.toggle(widget.product);
-    setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      _snackBar(
-        isFav
-            ? '${widget.product.title} saved'
-            : '${widget.product.title} removed from favorites',
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(_snackBar('Favorites will be connected next'));
   }
 
   void _addToCart() {
-    CartService.add(widget.product);
-    setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      _snackBar(
-        inCart
-            ? 'Already in your cart'
-            : '${widget.product.title} added to cart',
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(_snackBar('${widget.product.title} added to cart'));
   }
 
   void _messageSeller() {
@@ -123,8 +110,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
-                tag: product.image,
-                child: Image.network(product.image, fit: BoxFit.cover),
+                tag: product.image ?? product.id,
+                child: Image.network(
+                  product.image ?? 'https://via.placeholder.com/500',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -135,16 +125,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
-              padding: const EdgeInsets.fromLTRB(25, 30, 25, 130),
+              padding: const EdgeInsets.fromLTRB(15, 30, 15, 70),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      _pill(product.tag, Colors.black, Colors.white),
+                      _pill(
+                        product.styleTag ?? 'no Tags',
+                        Colors.black,
+                        Colors.white,
+                      ),
                       const SizedBox(width: 8),
                       _pill(
-                        product.category,
+                        product.category ?? 'Item',
                         Colors.grey.shade100,
                         Colors.black54,
                       ),
@@ -160,7 +154,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         child: Text(
                           product.title,
                           style: GoogleFonts.syne(
-                            fontSize: 28,
+                            fontSize: 22,
                             fontWeight: FontWeight.w900,
                             color: Colors.black,
                             height: 1.05,
@@ -170,9 +164,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        product.price,
+                        product.formattedPrice,
                         style: GoogleFonts.syne(
-                          fontSize: 26,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Colors.black,
                         ),
@@ -330,7 +324,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Widget _sellerRow(Product product) {
+  Widget _sellerRow(ProductModel product) {
     return GestureDetector(
       onTap: () {},
       child: Container(
@@ -345,7 +339,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           children: [
             CircleAvatar(
               radius: 21,
-              backgroundImage: NetworkImage(product.sellerImage),
+              backgroundImage: NetworkImage(
+                product.sellerImage ?? 'https://via.placeholder.com/150',
+              ),
             ),
 
             const SizedBox(width: 12),
@@ -399,9 +395,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'COMPLETE YOUR LOOK ✨',
+                  'Complete Your Look ✨',
                   style: GoogleFonts.syne(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                     color: Colors.black,
                   ),
