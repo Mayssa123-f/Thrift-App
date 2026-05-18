@@ -9,6 +9,7 @@ import '../profile/profile_screen.dart';
 import '../sell/multi_step_sell_screen.dart'; // Make sure this path is correct
 import '../cart/cart_screen.dart';
 import '../../services/cart_service.dart';
+import '../chat/conversations_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -51,15 +52,43 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      extendBody: true,
-      appBar: _buildAppBar(),
+  backgroundColor: Colors.white,
+  extendBody: true,
+  appBar: _buildAppBar(),
 
-      // 2. ERROR FIX: Handle the PageView/Index logic carefully
-      body: IndexedStack(index: currentIndex, children: pages),
+  body: IndexedStack(
+    index: currentIndex,
+    children: pages,
+  ),
 
-      bottomNavigationBar: _buildBottomNav(),
-    );
+  floatingActionButton: FloatingActionButton.extended(
+    backgroundColor: Colors.black,
+    elevation: 3,
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ConversationsScreen(),
+        ),
+      );
+    },
+    icon: const Icon(
+      Icons.chat_bubble_outline_rounded,
+      color: Colors.white,
+    ),
+    label: Text(
+      "Messages",
+      style: GoogleFonts.syne(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  ),
+
+  floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+  bottomNavigationBar: _buildBottomNav(),
+);
   }
 
   AppBar _buildAppBar() {
