@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
-
+import path from "path";
 import favoritesRoutes from "./routes/favoritesRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 
@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-
+app.use("/uploads", express.static(path.resolve("uploads")));
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/conversations", conversationRoutes);

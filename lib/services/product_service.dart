@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:thrift_app/models/product_model.dart';
+import 'dart:io';
 
+import 'package:thrift_app/models/product_model.dart';
 import 'api_client.dart';
 
 class ProductService {
@@ -26,7 +27,9 @@ class ProductService {
 
       return products.map((json) => ProductModel.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Failed to load products');
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load products',
+      );
     }
   }
 
@@ -36,7 +39,69 @@ class ProductService {
 
       return ProductModel.fromJson(response.data['product']);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Failed to load product');
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load product',
+      );
+    }
+  }
+
+  // =========================
+  // FIXED CREATE PRODUCT
+  // =========================
+  Future<ProductModel> createProduct({
+    required String title,
+    required String description,
+    required double price,
+    required String category,
+    required String size,
+    required String conditionType,
+    required String gender,
+    required String styleTag,
+    required List<File> images, // 👈 CHANGED (was List<String>)
+  }) async {
+    try {
+      final formData = FormData();
+
+      // TEXT FIELDS
+      formData.fields.addAll([
+        MapEntry('title', title),
+        MapEntry('description', description),
+        MapEntry('price', price.toString()),
+        MapEntry('category', category),
+        MapEntry('size', size),
+        MapEntry('condition_type', conditionType),
+        MapEntry('gender', gender),
+        MapEntry('style_tag', styleTag),
+      ]);
+
+      // IMAGES (multipart)
+      for (int i = 0; i < images.length; i++) {
+        final file = images[i];
+
+        formData.files.add(
+          MapEntry(
+            'images',
+            await MultipartFile.fromFile(
+              file.path,
+              filename: file.path.split('/').last,
+            ),
+          ),
+        );
+      }
+
+      final response = await dio.post(
+        '/products',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      return ProductModel.fromJson(response.data['product']);
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to create listing',
+      );
     }
   }
 
