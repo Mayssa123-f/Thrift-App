@@ -2,20 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:thrift_app/models/product_model.dart';
-import 'package:thrift_app/models/product.dart';
+import 'package:thrift_app/services/cart_service.dart';
+
 import '../services/favorites_service.dart';
-import '../services/cart_service.dart';
 
 class ProductCard extends StatefulWidget {
   final ProductModel product;
   final VoidCallback? onTap;
   final double imageHeight;
+  final VoidCallback? onCartUpdated;
 
   const ProductCard({
     super.key,
     required this.product,
     this.onTap,
     this.imageHeight = 260,
+    this.onCartUpdated,
   });
 
   @override
@@ -69,37 +71,35 @@ class _ProductCardState extends State<ProductCard> {
     }
   }
 
-  void _addToCart() {
-    final p = widget.product;
+  Future<void> _addToCart() async {
+    try {
+      await CartService.addToCart(productId: widget.product.id);
 
-    final product = Product(
-      id: p.id.toString(),
-      title: p.title,
-      price: p.formattedPrice,
-      image: p.image ?? '',
-      category: p.category ?? '',
-      tag: p.styleTag ?? '',
-      description: p.description,
-      sizes: p.sizes,
-      seller: p.seller,
-      sellerImage: p.sellerImage ?? '',
-    );
+      if (!mounted) return;
 
-    CartService.add(product);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${p.title} added to cart',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${widget.product.title} added to cart',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+          ),
+          duration: const Duration(milliseconds: 900),
+          backgroundColor: Colors.black87,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
-        duration: const Duration(milliseconds: 900),
-        backgroundColor: Colors.black87,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
+      );
+      widget.onCartUpdated?.call();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   @override

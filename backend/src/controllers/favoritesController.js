@@ -63,7 +63,7 @@ export const addFavorite = async (req, res) => {
 
     // Check product exists
     const [products] = await db.query(
-      "SELECT id, is_available FROM products WHERE id = ?",
+      "SELECT id, seller_id,is_available FROM products WHERE id = ?",
       [productId],
     );
 
@@ -76,7 +76,11 @@ export const addFavorite = async (req, res) => {
       "SELECT id FROM favorites WHERE buyer_id = ? AND product_id = ?",
       [buyerId, productId],
     );
-
+    if (products[0].seller_id === buyerId) {
+      return res.status(400).json({
+        message: "You cannot favorite your own item",
+      });
+    }
     if (existing.length > 0) {
       return res.status(400).json({ message: "Already in favorites" });
     }

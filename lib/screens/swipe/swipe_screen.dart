@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:thrift_app/models/product_model.dart';
 
 import '../../constants/app_colors.dart';
 import '../../controllers/product_controller.dart';
 
-import '../../models/product.dart';
 import '../../services/cart_service.dart';
 import '../../services/favorites_service.dart';
 
 class SwipeScreen extends StatefulWidget {
   final String search;
-
-  const SwipeScreen({super.key, required this.search});
+  final VoidCallback? onCartUpdated;
+  const SwipeScreen({super.key, required this.search, this.onCartUpdated});
 
   @override
   State<SwipeScreen> createState() => _SwipeScreenState();
@@ -57,8 +57,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     }
   }
 
-  ProductModel? get _current =>
-      _stack.isNotEmpty ? _stack.last : null;
+  ProductModel? get _current => _stack.isNotEmpty ? _stack.last : null;
 
   double get _rotation => (_dragX / 300).clamp(-0.25, 0.25);
 
@@ -98,29 +97,24 @@ class _SwipeScreenState extends State<SwipeScreen> {
   }
 
   /// 🛒 CART (USING ProductModel → Product)
-  void _addCurrentToCart() {
+  Future<void> _addCurrentToCart() async {
     if (_current == null) return;
 
-    final p = _current!;
+    final product = _current!;
 
-    final product = Product(
-      id: p.id.toString(),
-      title: p.title,
-      price: p.price.toString(),
-      image: p.image ?? '',
-      category: p.category ?? '',
-      tag: p.styleTag ?? '',
-      description: p.description,
-      sizes: p.sizes,
-      seller: p.seller,
-      sellerImage: p.sellerImage ?? '',
-    );
+    try {
+      await CartService.addToCart(
+        productId: product.id,
+        selectedSize: product.sizes.isNotEmpty ? product.sizes.first : null,
+      );
 
-    CartService.add(product);
+      _showSnack('${product.title} added to cart 🛒');
 
-    _showSnack('${product.title} added to cart 🛒');
-
-    _removeTop();
+      _removeTop();
+      widget.onCartUpdated?.call();
+    } catch (e) {
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   void _removeTop() {
@@ -146,9 +140,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         backgroundColor: Colors.black87,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -161,108 +153,108 @@ class _SwipeScreenState extends State<SwipeScreen> {
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
-          children: [
-            const SizedBox(height: 25),
-
-            Text(
-              'CURATED FOR YOU',
-              style: GoogleFonts.syne(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 3,
-                color: Colors.grey.shade400,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            Text(
-              '${_stack.length} items left',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: Colors.grey.shade400,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Expanded(
-              child: _stack.isEmpty
-                  ? _buildEmptyState()
-                  : Stack(
-                alignment: Alignment.center,
                 children: [
-                  if (_stack.length > 1)
-                    Positioned(
-                      bottom: 0,
-                      child: Transform.scale(
-                        scale: 0.93,
-                        child: _buildCard(
-                          _stack[_stack.length - 2],
-                          isBackground: true,
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: 25),
 
-                  GestureDetector(
-                    onPanStart: (_) =>
-                        setState(() => _isDragging = true),
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _dragX += details.delta.dx;
-                        _dragY += details.delta.dy;
-                      });
-                    },
-                    onPanEnd: (_) => _onDragEnd(),
-                    child: Transform.translate(
-                      offset: Offset(_dragX, _dragY * 0.4),
-                      child: Transform.rotate(
-                        angle: _rotation,
-                        child: _buildCard(_current!),
-                      ),
+                  Text(
+                    'CURATED FOR YOU',
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 3,
+                      color: Colors.grey.shade400,
                     ),
                   ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    '${_stack.length} items left',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Expanded(
+                    child: _stack.isEmpty
+                        ? _buildEmptyState()
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (_stack.length > 1)
+                                Positioned(
+                                  bottom: 0,
+                                  child: Transform.scale(
+                                    scale: 0.93,
+                                    child: _buildCard(
+                                      _stack[_stack.length - 2],
+                                      isBackground: true,
+                                    ),
+                                  ),
+                                ),
+
+                              GestureDetector(
+                                onPanStart: (_) =>
+                                    setState(() => _isDragging = true),
+                                onPanUpdate: (details) {
+                                  setState(() {
+                                    _dragX += details.delta.dx;
+                                    _dragY += details.delta.dy;
+                                  });
+                                },
+                                onPanEnd: (_) => _onDragEnd(),
+                                child: Transform.translate(
+                                  offset: Offset(_dragX, _dragY * 0.4),
+                                  child: Transform.rotate(
+                                    angle: _rotation,
+                                    child: _buildCard(_current!),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+
+                  if (_stack.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 45,
+                        vertical: 30,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _actionBtn(
+                            icon: Icons.favorite_rounded,
+                            iconColor: Colors.red,
+                            bg: Colors.white,
+                            size: 55,
+                            onTap: _swipeLeft,
+                            border: Colors.grey.shade200,
+                          ),
+                          _actionBtn(
+                            icon: Icons.shopping_bag_outlined,
+                            iconColor: Colors.white,
+                            bg: Colors.black,
+                            size: 70,
+                            onTap: _addCurrentToCart,
+                          ),
+                          _actionBtn(
+                            icon: Icons.close_rounded,
+                            iconColor: Colors.black,
+                            bg: Colors.white,
+                            size: 55,
+                            onTap: _swipeRight,
+                            border: Colors.grey.shade200,
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
-            ),
-
-            if (_stack.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 45,
-                  vertical: 30,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _actionBtn(
-                      icon: Icons.favorite_rounded,
-                      iconColor: Colors.red,
-                      bg: Colors.white,
-                      size: 55,
-                      onTap: _swipeLeft,
-                      border: Colors.grey.shade200,
-                    ),
-                    _actionBtn(
-                      icon: Icons.shopping_bag_outlined,
-                      iconColor: Colors.white,
-                      bg: Colors.black,
-                      size: 70,
-                      onTap: _addCurrentToCart,
-                    ),
-                    _actionBtn(
-                      icon: Icons.close_rounded,
-                      iconColor: Colors.black,
-                      bg: Colors.white,
-                      size: 55,
-                      onTap: _swipeRight,
-                      border: Colors.grey.shade200,
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -289,10 +281,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              Colors.black.withOpacity(0.75),
-            ],
+            colors: [Colors.transparent, Colors.black.withOpacity(0.75)],
           ),
         ),
         padding: const EdgeInsets.all(25),
@@ -304,16 +293,12 @@ class _SwipeScreenState extends State<SwipeScreen> {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundImage:
-                  NetworkImage(product.sellerImage ?? ''),
+                  backgroundImage: NetworkImage(product.sellerImage ?? ''),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   product.seller,
-                  style: GoogleFonts.inter(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
+                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
@@ -329,10 +314,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
             const SizedBox(height: 4),
             Text(
               product.formattedPrice,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                color: Colors.white,
-              ),
+              style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
             ),
           ],
         ),
@@ -349,7 +331,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     required Color iconColor,
     required Color bg,
     required double size,
-    required VoidCallback onTap,
+    required Function() onTap,
     Color? border,
   }) {
     return GestureDetector(
@@ -360,8 +342,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
         decoration: BoxDecoration(
           color: bg,
           shape: BoxShape.circle,
-          border:
-          border != null ? Border.all(color: border) : null,
+          border: border != null ? Border.all(color: border) : null,
         ),
         child: Icon(icon, color: iconColor, size: size * 0.42),
       ),

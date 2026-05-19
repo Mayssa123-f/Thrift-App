@@ -1,5 +1,7 @@
+import 'package:thrift_app/models/product.dart';
+
 import '../data/app_data.dart';
-import '../models/product.dart';
+
 
 class ListingService {
   static void add(Product product) {

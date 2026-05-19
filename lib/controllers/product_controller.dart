@@ -1,7 +1,5 @@
-
 import 'package:thrift_app/models/product_model.dart';
-
-import '../services/product_service.dart';
+import 'package:thrift_app/services/product_service.dart';
 
 class ProductController {
   final ProductService _productService = ProductService();
@@ -20,5 +18,9 @@ class ProductController {
 
   Future<ProductModel> getProductById(int id) async {
     return await _productService.getProductById(id);
+  }
+
+  Future<List<ProductModel>> getMyListings() async {
+    return await _productService.getMyListings();
   }
 }

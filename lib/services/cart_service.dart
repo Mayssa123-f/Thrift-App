@@ -1,31 +1,59 @@
-import '../data/app_data.dart';
-import '../models/product.dart';
+import 'package:dio/dio.dart';
+import 'package:thrift_app/models/cart_item_model.dart';
+import 'api_client.dart';
 
 class CartService {
-  static bool isInCart(Product product) {
-    return AppData.cart.any((p) => p.id == product.id);
-  }
+  static final Dio dio = ApiClient.dio;
 
-  static void add(Product product) {
-    if (!isInCart(product)) {
-      AppData.cart.add(product);
+  static Future<List<CartItemModel>> getCartItems() async {
+    try {
+      final response = await dio.get('/cart');
+
+      final List data = response.data['cartItems'] ?? [];
+
+      return data.map((json) => CartItemModel.fromJson(json)).toList();
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load cart',
+      );
     }
   }
 
-  static void remove(Product product) {
-    AppData.cart.removeWhere((p) => p.id == product.id);
+  static Future<void> addToCart({
+    required int productId,
+    String? selectedSize,
+  }) async {
+    try {
+      await dio.post(
+        '/cart/$productId',
+        data: {
+          'selected_size': selectedSize,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to add to cart',
+      );
+    }
   }
 
-  static void clear() {
-    AppData.cart.clear();
+  static Future<void> removeFromCart(int productId) async {
+    try {
+      await dio.delete('/cart/$productId');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to remove from cart',
+      );
+    }
   }
 
-  static double get total {
-    return AppData.cart.fold(0, (sum, p) {
-      final price = double.tryParse(p.price.replaceAll('\$', '')) ?? 0;
-      return sum + price;
-    });
+  static Future<void> clearCart() async {
+    try {
+      await dio.delete('/cart');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to clear cart',
+      );
+    }
   }
-
-  static int get count => AppData.cart.length;
 }

@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:thrift_app/models/product.dart';
 import '../../constants/app_colors.dart';
-import '../../models/product.dart';
+
 import '../../services/listing_service.dart';
 
 class MultiStepSellScreen extends StatefulWidget {

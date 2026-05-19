@@ -16,6 +16,7 @@ class ProductModel {
   final String? sellerImage;
   final String? image;
   final List<String> images;
+  final bool isAvailable;
 
   ProductModel({
     required this.id,
@@ -35,6 +36,7 @@ class ProductModel {
     this.sellerImage,
     this.image,
     this.images = const [],
+    required this.isAvailable,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -55,14 +57,15 @@ class ProductModel {
       seller: json['seller'] ?? 'Unknown Seller',
       sellerImage: json['seller_image'],
       image: json['image'],
-      images: json['images'] != null
-          ? List<String>.from(json['images'])
-          : [],
+      images: json['images'] != null ? List<String>.from(json['images']) : [],
+      isAvailable: json['is_available'] == 1 || json['is_available'] == true,
     );
   }
 
   String get formattedPrice {
-    final cleanPrice = price % 1 == 0 ? price.toInt().toString() : price.toStringAsFixed(2);
+    final cleanPrice = price % 1 == 0
+        ? price.toInt().toString()
+        : price.toStringAsFixed(2);
     return '\$$cleanPrice';
   }
 

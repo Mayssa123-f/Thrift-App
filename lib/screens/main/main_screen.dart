@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
 
 import '../../services/cart_service.dart';
@@ -21,8 +22,25 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
   bool isSearching = false;
+  int cartCount = 0;
 
   final TextEditingController searchController = TextEditingController();
+
+  Future<void> refreshCartCount() async {
+    await _loadCartCount();
+  }
+
+  Future<void> _loadCartCount() async {
+    try {
+      final items = await CartController().getCartItems();
+
+      if (!mounted) return;
+
+      setState(() {
+        cartCount = items.length;
+      });
+    } catch (_) {}
+  }
 
   late List<Widget> pages;
 
@@ -30,23 +48,47 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _buildPages();
+    _loadCartCount();
   }
 
   void _buildPages() {
     pages = [
-      HomeScreen(search: searchController.text),
-      SwipeScreen(search: searchController.text),
+      HomeScreen(
+        search: searchController.text,
+        onCartUpdated: refreshCartCount,
+      ),
+
+      SwipeScreen(
+        search: searchController.text,
+        onCartUpdated: refreshCartCount,
+      ),
+
       const SizedBox(),
+
       FavoritesScreen(key: ValueKey(DateTime.now().millisecondsSinceEpoch)),
-      const ProfileScreen(),
+      ProfileScreen(
+        key: ValueKey('profile-${DateTime.now().millisecondsSinceEpoch}'),
+      ),
     ];
   }
 
-  void openCart() {
-    Navigator.push(
+  void openCart() async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CartScreen()),
     );
+
+    if (result != null) {
+      if (result['changed'] == true) {
+        _loadCartCount();
+      }
+
+      if (result['goHome'] == true) {
+        setState(() {
+          currentIndex = 0;
+        });
+      }
+    }
   }
 
   void openMessages() {
@@ -174,7 +216,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildCartButton() {
-    final count = CartService.count;
+    final count = cartCount;
 
     return Stack(
       children: [
@@ -246,7 +288,7 @@ class _MainScreenState extends State<MainScreen> {
               setState(() {
                 currentIndex = index;
 
-                if (index == 3) {
+                if (index == 3 || index == 4) {
                   _buildPages();
                 }
               });
