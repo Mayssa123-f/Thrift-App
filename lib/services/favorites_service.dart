@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import '../models/product_model.dart';
+import 'package:thrift_app/models/product_model.dart';
+
 import 'api_client.dart';
 
 class FavoritesService {
@@ -40,36 +41,13 @@ class FavoritesService {
 
       final List data = response.data['favorites'] ?? [];
 
-      return data.map((json) => _mapToProduct(json)).toList();
+      return data.map((json) => ProductModel.fromJson(json)).toList();
     } on DioException catch (e) {
       throw Exception(_error(e, 'Failed to fetch favorites'));
     }
   }
 
   /// MAP BACKEND → ProductModel (NO MODEL CHANGE NEEDED)
-  static ProductModel _mapToProduct(Map json) {
-    return ProductModel(
-      id: json['product_id'],
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      price: double.parse(json['price'].toString()),
-      currency: json['currency'] ?? 'USD',
-      brand: json['brand'],
-      size: json['size'],
-      conditionType: json['condition_type'],
-      gender: json['gender'],
-      styleTag: json['style_tag'],
-      location: json['location'],
-      category: json['category'],
-
-      sellerId: 0, // not returned in favorites query
-      seller: json['seller_name'] ?? 'Unknown Seller',
-      sellerImage: json['seller_image'],
-
-      image: null,
-      images: [],
-    );
-  }
 
   static String _error(DioException e, String fallback) {
     final data = e.response?.data;

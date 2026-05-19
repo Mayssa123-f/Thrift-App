@@ -9,6 +9,7 @@ class Product {
   final List<String> sizes;
   final String seller;
   final String sellerImage;
+  
 
   const Product({
     required this.id,

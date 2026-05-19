@@ -69,9 +69,8 @@ class AuthController {
   }
 
   Future<void> logout() async {
-    await TokenStorage.clearToken();
-  }
-
+  await _authService.logout();
+}
   Future<void> forgotPassword(String email) async {
     if (email.trim().isEmpty) {
       throw Exception('Email is required');

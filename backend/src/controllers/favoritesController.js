@@ -7,9 +7,10 @@ export const getFavorites = async (req, res) => {
 
     const [favorites] = await db.query(
       `SELECT
-        f.id as favorite_id,
-        f.created_at as saved_at,
-        p.id as product_id,
+        f.id AS favorite_id,
+        f.created_at AS saved_at,
+
+        p.id AS id,
         p.title,
         p.description,
         p.price,
@@ -22,14 +23,25 @@ export const getFavorites = async (req, res) => {
         p.style_tag,
         p.color,
         p.is_available,
-        u.full_name as seller_name,
-        u.profile_image_url as seller_image
+
+        c.name AS category,
+
+        u.id AS seller_id,
+        u.full_name AS seller,
+        u.profile_image_url AS seller_image,
+
+        pi.image_url AS image
+
       FROM favorites f
       JOIN products p ON f.product_id = p.id
+      LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
+      LEFT JOIN product_images pi
+        ON p.id = pi.product_id AND pi.is_primary = TRUE
+
       WHERE f.buyer_id = ?
       ORDER BY f.created_at DESC`,
-      [buyerId]
+      [buyerId],
     );
 
     res.json({
@@ -51,8 +63,8 @@ export const addFavorite = async (req, res) => {
 
     // Check product exists
     const [products] = await db.query(
-      "SELECT id, is_available FROM products WHERE id = ?",
-      [productId]
+      "SELECT id, seller_id,is_available FROM products WHERE id = ?",
+      [productId],
     );
 
     if (products.length === 0) {
@@ -62,16 +74,20 @@ export const addFavorite = async (req, res) => {
     // Check already in favorites
     const [existing] = await db.query(
       "SELECT id FROM favorites WHERE buyer_id = ? AND product_id = ?",
-      [buyerId, productId]
+      [buyerId, productId],
     );
-
+    if (products[0].seller_id === buyerId) {
+      return res.status(400).json({
+        message: "You cannot favorite your own item",
+      });
+    }
     if (existing.length > 0) {
       return res.status(400).json({ message: "Already in favorites" });
     }
 
     await db.query(
       "INSERT INTO favorites (buyer_id, product_id) VALUES (?, ?)",
-      [buyerId, productId]
+      [buyerId, productId],
     );
 
     res.status(201).json({ message: "Added to favorites" });
@@ -89,7 +105,7 @@ export const removeFavorite = async (req, res) => {
 
     const [result] = await db.query(
       "DELETE FROM favorites WHERE buyer_id = ? AND product_id = ?",
-      [buyerId, productId]
+      [buyerId, productId],
     );
 
     if (result.affectedRows === 0) {
@@ -111,7 +127,7 @@ export const checkFavorite = async (req, res) => {
 
     const [existing] = await db.query(
       "SELECT id FROM favorites WHERE buyer_id = ? AND product_id = ?",
-      [buyerId, productId]
+      [buyerId, productId],
     );
 
     res.json({ isFavorite: existing.length > 0 });

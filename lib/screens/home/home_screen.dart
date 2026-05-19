@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:thrift_app/models/product_model.dart';
 
 import '../../constants/app_colors.dart';
 import '../../controllers/product_controller.dart';
-import '../../models/product_model.dart';
+
 import '../../widgets/product_card.dart';
 import '../../services/favorites_service.dart';
 import '../product/product_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String search;
-
-  const HomeScreen({super.key, required this.search});
+  final VoidCallback? onCartUpdated;
+  const HomeScreen({super.key, required this.search, this.onCartUpdated});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -90,11 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -116,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           /// STYLE FILTER
           SizedBox(
-            height: 55,
+            height: 45,
             width: double.infinity,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -141,9 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isActive ? Colors.black : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isActive
-                            ? Colors.black
-                            : Colors.grey.shade200,
+                        color: isActive ? Colors.black : Colors.grey.shade200,
                       ),
                     ),
                     child: Text(
@@ -168,48 +163,46 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : products.isEmpty
                 ? Center(
-              child: Text(
-                'No items found',
-                style: GoogleFonts.syne(
-                  color: Colors.grey.shade400,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-                : MasonryGridView.count(
-              padding:
-              const EdgeInsets.fromLTRB(18, 0, 18, 120),
-              crossAxisCount: 2,
-              mainAxisSpacing: 18,
-              crossAxisSpacing: 14,
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-
-                return ProductCard(
-                  product: product,
-                  imageHeight: _cardHeight(index),
-
-                  /// IMPORTANT:
-                  /// ❌ removed isFavorite (not supported in your ProductCard)
-                  /// ProductCard already handles favorites internally via service
-
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailsScreen(
-                          product: product,
-                        ),
+                    child: Text(
+                      'No items found',
+                      style: GoogleFonts.syne(
+                        color: Colors.grey.shade400,
+                        fontWeight: FontWeight.w600,
                       ),
-                    );
+                    ),
+                  )
+                : MasonryGridView.count(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 120),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 14,
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
 
-                    /// refresh favorites after returning
-                    _loadFavorites();
-                  },
-                );
-              },
-            ),
+                      return ProductCard(
+                        product: product,
+                        imageHeight: _cardHeight(index),
+                        onCartUpdated: widget.onCartUpdated,
+
+                        /// IMPORTANT:
+                        /// ❌ removed isFavorite (not supported in your ProductCard)
+                        /// ProductCard already handles favorites internally via service
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProductDetailsScreen(product: product),
+                            ),
+                          );
+
+                          /// refresh favorites after returning
+                          _loadFavorites();
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
