@@ -1,20 +1,31 @@
 class ConversationModel {
   final int id;
-  final int productId;
+  final int? productId;
   final int buyerId;
   final int sellerId;
+
   final String? productTitle;
   final String? productImage;
+  final dynamic productPrice;
+
+  final String? receiverName;
+  final String? receiverImage;
+
   final String? lastMessage;
+  
 
   ConversationModel({
     required this.id,
-    required this.productId,
+    this.productId,
     required this.buyerId,
     required this.sellerId,
     this.productTitle,
     this.productImage,
+    this.productPrice,
+    this.receiverName,
+    this.receiverImage,
     this.lastMessage,
+
   });
 
   factory ConversationModel.fromJson(Map<String, dynamic> json) {
@@ -23,8 +34,14 @@ class ConversationModel {
       productId: json['product_id'],
       buyerId: json['buyer_id'],
       sellerId: json['seller_id'],
+
       productTitle: json['product_title'],
       productImage: json['product_image'],
+      productPrice: json['product_price'],
+
+      receiverName: json['receiver_name'],
+      receiverImage: json['receiver_image'],
+
       lastMessage: json['last_message'],
     );
   }

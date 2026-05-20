@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
-import '../../constants/app_colors.dart';
-import '../home/home_screen.dart';
-import '../swipe/swipe_screen.dart';
-import '../favorites/favorites_screen.dart';
-import '../profile/profile_screen.dart';
-import '../sell/multi_step_sell_screen.dart'; // Make sure this path is correct
-import '../cart/cart_screen.dart';
+
 import '../../services/cart_service.dart';
+import '../cart/cart_screen.dart';
 import '../chat/conversations_screen.dart';
+import '../favorites/favorites_screen.dart';
+import '../home/home_screen.dart';
+import '../profile/profile_screen.dart';
+import '../sell/multi_step_sell_screen.dart';
+import '../swipe/swipe_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,24 +21,24 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
   bool isSearching = false;
-  TextEditingController searchController = TextEditingController();
 
-  // 1. FIXED PAGE LIST: Ensure this order matches the Nav Items exactly
-  late final List<Widget> pages;
+  final TextEditingController searchController = TextEditingController();
+
+  late List<Widget> pages;
 
   @override
   void initState() {
     super.initState();
-    _updatePages();
+    _buildPages();
   }
 
-  void _updatePages() {
+  void _buildPages() {
     pages = [
-      HomeScreen(search: searchController.text), // Index 0
-      SwipeScreen(search: searchController.text), // Index 1
-      const SizedBox(), // Index 2 (Placeholder for Sell - opened as Modal)
-      const FavoritesScreen(), // Index 3
-      const ProfileScreen(), // Index 4
+      HomeScreen(search: searchController.text),
+      SwipeScreen(search: searchController.text),
+      const SizedBox(),
+      FavoritesScreen(key: ValueKey(DateTime.now().millisecondsSinceEpoch)),
+      const ProfileScreen(),
     ];
   }
 
@@ -49,23 +49,39 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  void openMessages() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+    );
+  }
+
+  void openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: Colors.white,
-  extendBody: true,
-  appBar: _buildAppBar(),
+      backgroundColor: Colors.white,
+      extendBody: true,
+      appBar: _buildAppBar(),
 
-  body: IndexedStack(
-    index: currentIndex,
-    children: pages,
-  ),
+      body: IndexedStack(index: currentIndex, children: pages),
 
- floatingActionButton: Padding(
-  padding: const EdgeInsets.only(bottom: 95),
-  child: FloatingActionButton(
+  floatingActionButton: FloatingActionButton.extended(
     backgroundColor: Colors.black,
-    elevation: 4,
+    elevation: 3,
     onPressed: () {
       Navigator.push(
         context,
@@ -74,13 +90,19 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
     },
-    child: const Icon(
+    icon: const Icon(
       Icons.chat_bubble_outline_rounded,
       color: Colors.white,
-      size: 24,
+    ),
+    label: Text(
+      "Messages",
+      style: GoogleFonts.syne(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   ),
-),
+
   floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
   bottomNavigationBar: _buildBottomNav(),
@@ -99,27 +121,26 @@ class _MainScreenState extends State<MainScreen> {
             isSearching ? Icons.close_rounded : Icons.search_rounded,
             color: Colors.black,
           ),
-          onPressed: () => setState(() {
-            isSearching = !isSearching;
-            if (!isSearching) searchController.clear();
-          }),
+          onPressed: () {
+            setState(() {
+              isSearching = !isSearching;
+
+              if (!isSearching) {
+                searchController.clear();
+              }
+
+              _buildPages();
+            });
+          },
         ),
         _buildCartButton(),
         IconButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NotificationsScreen(),
-              ),
-            );
-          },
+          onPressed: openNotifications,
           icon: const Icon(
             Icons.notifications_none_rounded,
             color: Colors.black,
           ),
         ),
-
         const SizedBox(width: 5),
       ],
     );
@@ -142,7 +163,11 @@ class _MainScreenState extends State<MainScreen> {
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(vertical: 10),
         ),
-        onChanged: (value) => setState(() => _updatePages()),
+        onChanged: (_) {
+          setState(() {
+            _buildPages();
+          });
+        },
       ),
     );
   }
@@ -161,6 +186,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildCartButton() {
     final count = CartService.count;
+
     return Stack(
       children: [
         IconButton(
@@ -193,8 +219,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBottomNav() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-      height: 70,
+      margin: const EdgeInsets.fromLTRB(14, 0, 24, 30),
+      height: 60,
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(25),
@@ -208,42 +234,67 @@ class _MainScreenState extends State<MainScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            if (index == 2) {
-              // 3. SELL ACTION: Open the multi-step flow as a Modal
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  fullscreenDialog: true, // Makes it slide up from bottom
-                  builder: (context) => const MultiStepSellScreen(),
-                ),
-              );
-            } else {
-              setState(() => currentIndex = index);
-            }
-          },
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          backgroundColor: Colors.transparent,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white.withOpacity(0.4),
-          elevation: 0,
-          items: [
-            _navItem(Icons.grid_view_rounded, "Home"),
-            _navItem(Icons.style_rounded, "Swipe"),
-            _navItem(Icons.add_circle_rounded, "Sell"), // Special middle button
-            _navItem(Icons.favorite_border_rounded, "Wishlist"),
-            _navItem(Icons.person_outline_rounded, "Profile"),
-          ],
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
+
+            onTap: (index) {
+              if (index == 2) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (context) => const MultiStepSellScreen(),
+                  ),
+                );
+                return;
+              }
+
+              setState(() {
+                currentIndex = index;
+
+                if (index == 3) {
+                  _buildPages();
+                }
+              });
+            },
+
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
+
+            selectedFontSize: 0,
+            unselectedFontSize: 0,
+
+            iconSize: 26,
+
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white.withOpacity(0.45),
+
+            items: [
+              _navItem(Icons.grid_view_rounded),
+              _navItem(Icons.style_rounded),
+              _navItem(Icons.add_circle_rounded),
+              _navItem(Icons.favorite_border_rounded),
+              _navItem(Icons.person_outline_rounded),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  BottomNavigationBarItem _navItem(IconData icon, String label) {
-    return BottomNavigationBarItem(icon: Icon(icon, size: 26), label: label);
+  BottomNavigationBarItem _navItem(IconData icon) {
+    return BottomNavigationBarItem(
+      icon: Center(child: Icon(icon, size: 26)),
+      label: '',
+    );
   }
 }

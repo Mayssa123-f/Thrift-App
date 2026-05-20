@@ -103,20 +103,33 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         child: Row(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                height: 58,
-                                width: 58,
-                                color: Colors.grey.shade100,
-                                child: conversation.productImage != null
-                                    ? Image.network(
-                                        conversation.productImage!,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : const Icon(Icons.image_outlined),
-                              ),
-                            ),
+  borderRadius: BorderRadius.circular(18),
+  child: Container(
+    height: 58,
+    width: 58,
+    color: const Color(0xFFF3ECFF),
 
+    child: conversation.receiverImage != null &&
+            conversation.receiverImage!.isNotEmpty
+        ? Image.network(
+            conversation.receiverImage!,
+            fit: BoxFit.cover,
+          )
+        : Center(
+            child: Text(
+              (conversation.receiverName ?? "U")
+                  .substring(0, 1)
+                  .toUpperCase(),
+              style: GoogleFonts.syne(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.deepPurple,
+              ),
+            ),
+          ),
+  ),
+),
+                            
                             const SizedBox(width: 14),
 
                             Expanded(
@@ -124,7 +137,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    conversation.productTitle ?? "Product Chat",
+                                    conversation.receiverName ?? "Seller",
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.syne(
@@ -137,8 +150,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                   const SizedBox(height: 5),
 
                                   Text(
-                                    conversation.lastMessage ??
-                                        "Start chatting about this item",
+                                    conversation.lastMessage ?? "No messages yet",
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.inter(

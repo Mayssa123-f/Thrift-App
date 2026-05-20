@@ -23,17 +23,25 @@ class ChatController {
     return _chatService.getMessages(conversationId);
   }
 
+  // NORMAL TEXT MESSAGE
   Future<ChatMessageModel> sendMessage({
     required int conversationId,
     required String messageText,
   }) {
-    if (messageText.trim().isEmpty) {
-      throw Exception("Message cannot be empty");
-    }
-
     return _chatService.sendMessage(
       conversationId: conversationId,
-      messageText: messageText.trim(),
+      messageText: messageText,
+    );
+  }
+
+  // PRODUCT CARD MESSAGE
+  Future<ChatMessageModel> sendProductMessage({
+    required int conversationId,
+    required int productId,
+  }) {
+    return _chatService.sendProductMessage(
+      conversationId: conversationId,
+      productId: productId,
     );
   }
 }

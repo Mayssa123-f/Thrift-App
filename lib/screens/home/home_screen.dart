@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           /// STYLE FILTER
           SizedBox(
-            height: 55,
+            height: 45,
             width: double.infinity,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
