@@ -232,59 +232,238 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
 
   // ================= STEP 1 (UNCHANGED STYLE) =================
   Widget _stepImages() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(25),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Add Photos',
+            style: GoogleFonts.syne(fontSize: 28, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'First photo will be the cover.',
+            style: GoogleFonts.inter(color: Colors.black45, fontSize: 14),
+          ),
+          const SizedBox(height: 24),
+
+          // PICK BUTTONS
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _pickFromGallery,
-                  icon: const Icon(Icons.photo),
-                  label: const Text("Gallery"),
+                child: GestureDetector(
+                  onTap: _pickFromGallery,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.photo_library_outlined,
+                            color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Gallery',
+                          style: GoogleFonts.syne(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _takePhoto,
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text("Camera"),
+                child: GestureDetector(
+                  onTap: _takePhoto,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.camera_alt_outlined,
+                            color: Colors.black, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Camera',
+                          style: GoogleFonts.syne(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          if (_images.isNotEmpty)
+          // IMAGE PREVIEWS
+          if (_images.isEmpty)
+            Container(
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.grey.shade200,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 40, color: Colors.grey.shade300),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No photos added yet',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Text(
+              '${_images.length} photo${_images.length == 1 ? '' : 's'} added',
+              style: GoogleFonts.syne(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.black45,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 120,
-              child: ListView.builder(
+              height: 160,
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _images.length,
-                itemBuilder: (c, i) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: Stack(
-                      children: [
-                        Image.file(_images[i],
-                            width: 100, height: 120, fit: BoxFit.cover),
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.file(
+                          _images[i],
+                          width: 120,
+                          height: 160,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      // COVER badge on first image
+                      if (i == 0)
                         Positioned(
-                          right: 5,
-                          top: 5,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _images.removeAt(i)),
-                            child: const Icon(Icons.close, color: Colors.red),
+                          bottom: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'COVER',
+                              style: GoogleFonts.syne(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                        )
-                      ],
-                    ),
+                        ),
+                      // REMOVE button
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _images.removeAt(i)),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close,
+                                size: 14, color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
-            )
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // TIPS BOX
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TIPS FOR GREAT PHOTOS',
+                  style: GoogleFonts.syne(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black45,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...['Use natural lighting',
+                  'Show any flaws honestly',
+                  'Include multiple angles']
+                    .map((tip) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.black54),
+                      const SizedBox(width: 8),
+                      Text(
+                        tip,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+          ),
         ],
       ),
     );
