@@ -125,7 +125,7 @@ export const createOrder = async (req, res) => {
         `INSERT INTO orders
           (buyer_id, seller_id, product_id, total_price,
            original_price, final_price, delivery_method, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'accepted')`,
         [
           buyerId,
           item.seller_id,
@@ -175,13 +175,19 @@ export const getMyOrders = async (req, res) => {
         o.final_price,
         o.delivery_method,
         o.created_at,
+        o.seller_id,
+        o.buyer_id,
         p.id AS product_id,
         p.title,
         p.price,
         c.name AS category,
         u.full_name AS seller,
         u.profile_image_url AS seller_image,
-        pi.image_url AS image
+        pi.image_url AS image,
+        CASE
+          WHEN o.seller_id = ? THEN 'sale'
+          ELSE 'purchase'
+        END AS type
        FROM orders o
        JOIN products p ON o.product_id = p.id
        LEFT JOIN categories c ON p.category_id = c.id
@@ -190,7 +196,7 @@ export const getMyOrders = async (req, res) => {
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE o.buyer_id = ?
        ORDER BY o.created_at DESC`,
-      [buyerId]
+      [buyerId, buyerId]
     );
 
     res.json({
@@ -233,23 +239,25 @@ export const getSellerOrders = async (req, res) => {
       [sellerId]
     );
 
-    // Calculate total earnings from completed orders
+    // FIXED: correct variable + correct alias
     const [earningsResult] = await db.query(
       `SELECT COALESCE(SUM(final_price), 0) AS total_earnings
        FROM orders
-       WHERE seller_id = ? AND status = 'completed'`,
+       WHERE seller_id = ?
+       AND status IN ('accepted', 'completed')`,
       [sellerId]
     );
 
-    res.json({
+    return res.json({
       message: "Seller orders fetched",
       count: orders.length,
-      total_earnings: parseFloat(earningsResult[0].total_earnings),
+      total_earnings: Number(earningsResult?.[0]?.total_earnings || 0),
       orders,
     });
+
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -302,34 +310,39 @@ export const getWallet = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Money earned as seller (completed orders)
+    // ================== EARNED ==================
     const [earned] = await db.query(
       `SELECT COALESCE(SUM(final_price), 0) AS total
        FROM orders
-       WHERE seller_id = ? AND status = 'completed'`,
+       WHERE seller_id = ?
+       AND status IN ('accepted', 'completed')`,
       [userId]
     );
 
-    // Money spent as buyer (pending/accepted/completed orders)
+    // ================== SPENT ==================
     const [spent] = await db.query(
       `SELECT COALESCE(SUM(final_price), 0) AS total
        FROM orders
-       WHERE buyer_id = ? AND status != 'cancelled' AND status != 'rejected'`,
+       WHERE buyer_id = ?
+       AND status NOT IN ('cancelled', 'rejected')`,
       [userId]
     );
 
-    // All transactions — both buying and selling
+    // ================== FIXED TRANSACTIONS QUERY ==================
     const [transactions] = await db.query(
       `SELECT
         o.id,
         o.status,
         o.final_price,
         o.created_at,
+        o.seller_id,
+        o.buyer_id,
         p.title,
         pi.image_url AS image,
         CASE
           WHEN o.seller_id = ? THEN 'sale'
-          ELSE 'purchase'
+          WHEN o.buyer_id = ? THEN 'purchase'
+          ELSE 'unknown'
         END AS type
        FROM orders o
        JOIN products p ON o.product_id = p.id
@@ -337,21 +350,23 @@ export const getWallet = async (req, res) => {
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE o.seller_id = ? OR o.buyer_id = ?
        ORDER BY o.created_at DESC`,
-      [userId, userId, userId]
+      [userId, userId, userId, userId]
     );
 
-    const totalEarned = parseFloat(earned[0].total);
-    const totalSpent = parseFloat(spent[0].total);
-    const balance = parseFloat((totalEarned - totalSpent).toFixed(2));
+    const totalEarned = Number(earned?.[0]?.total || 0);
+    const totalSpent = Number(spent?.[0]?.total || 0);
 
-    res.json({
+    const balance = Number((totalEarned - totalSpent).toFixed(2));
+
+    return res.json({
       balance,
       total_earned: totalEarned,
       total_spent: totalSpent,
       transactions,
     });
+
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server error" });
+    console.log("getWallet error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
