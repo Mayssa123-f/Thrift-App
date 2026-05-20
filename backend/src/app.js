@@ -9,6 +9,8 @@ import conversationRoutes from "./routes/conversationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import offerRoutes from "./routes/offerRoutes.js";
 
+import cartRoutes from "./routes/cartRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 const app = express();
 
@@ -27,5 +29,8 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/offers", offerRoutes);
 
+app.use("/api/orders", orderRoutes);
+app.use("/api/cart", cartRoutes);
 
 export default app;
+

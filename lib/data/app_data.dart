@@ -1,4 +1,6 @@
-import '../models/product.dart';
+
+
+import 'package:thrift_app/models/product.dart';
 
 class AppData {
   static List<Product> favorites = [];

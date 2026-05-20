@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/screens/mylisting/my_listing_screen.dart';
+import 'package:thrift_app/controllers/cart_controller.dart';
+import 'package:thrift_app/controllers/product_controller.dart';
+import 'package:thrift_app/services/favorites_service.dart';
 import '../../constants/app_colors.dart';
 import '../../data/app_data.dart';
 import '../../services/listing_service.dart';
@@ -26,10 +30,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   UserModel? currentUser;
   bool isLoading = true;
+  final CartController cartController = CartController();
+  final ProductController productController = ProductController();
+
+  int wishlistCount = 0;
+  int cartCount = 0;
+  int listingsCount = 0;
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _loadAccountCounts();
+  }
+
+  Future<void> _loadAccountCounts() async {
+    try {
+      final favorites = await FavoritesService.getFavorites();
+      final cartItems = await cartController.getCartItems();
+      final listings = await productController.getMyListings();
+
+      if (!mounted) return;
+
+      setState(() {
+        wishlistCount = favorites.length;
+        cartCount = cartItems.length;
+        listingsCount = listings.where((p) => p.isAvailable).length;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadUser() async {
@@ -57,6 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       // appBar: AppBar(
       //   backgroundColor: Colors.white,
       //   elevation: 0,
@@ -84,12 +112,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       //         color: Colors.black,
       //       ),
       //     ),
-         
-         
+
       //     const SizedBox(width: 8),
       //   ],
       // ),
-   
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -111,28 +137,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _menuItem(
                     Icons.favorite_outline_rounded,
                     'My Wishlist',
-                    '${AppData.favorites.length} items',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FavoritesScreen(),
-                      ),
-                    ),
+                    '$wishlistCount items',
+                    () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FavoritesScreen(),
+                        ),
+                      );
+                      _loadAccountCounts();
+                    },
                   ),
                   _menuItem(
                     Icons.shopping_bag_outlined,
                     'My Cart',
-                    '${AppData.cart.length} items',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CartScreen()),
-                    ),
+                    '$cartCount items',
+                    () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CartScreen()),
+                      );
+                      _loadAccountCounts();
+                    },
                   ),
                   _menuItem(
                     Icons.inventory_2_outlined,
                     'My Listings',
-                    '${ListingService.all.length} active',
-                    () {},
+                    '$listingsCount active',
+                    () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyListingsScreen(),
+                        ),
+                      );
+                      _loadAccountCounts();
+                    },
                   ),
                   const SizedBox(height: 20),
                   _sectionLabel('SETTINGS'),
