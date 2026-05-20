@@ -1,10 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/services/order_service.dart';
 import 'widgets/cash_out_sheet.dart';
 
-class PaymentsPayoutsScreen extends StatelessWidget {
+class PaymentsPayoutsScreen extends StatefulWidget {
   const PaymentsPayoutsScreen({super.key});
 
+  @override
+  State<PaymentsPayoutsScreen> createState() =>
+      _PaymentsPayoutsScreenState();
+}
+
+class _PaymentsPayoutsScreenState
+    extends State<PaymentsPayoutsScreen> {
+  bool isLoading = true;
+
+  double balance = 0;
+  double totalEarned = 0;
+  double totalSpent = 0;
+
+  List<dynamic> transactions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallet();
+  }
+
+  // ================= SAFE WALLET LOADING =================
+  Future<void> _loadWallet() async {
+    try {
+      final data = await OrderService.getWallet();
+
+      if (!mounted) return;
+
+      setState(() {
+        balance = double.tryParse(data['balance'].toString()) ?? 0.0;
+        totalEarned = double.tryParse(data['total_earned'].toString()) ?? 0.0;
+        totalSpent = double.tryParse(data['total_spent'].toString()) ?? 0.0;
+
+        transactions = (data['transactions'] as List?) ?? [];
+
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -13,58 +58,93 @@ class PaymentsPayoutsScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "PAYMENTS & PAYOUTS",
-          style: GoogleFonts.syne(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 16),
+          'PAYMENTS & PAYOUTS',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+            fontSize: 16,
+          ),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 💰 WALLET BALANCE CARD
-            _buildBalanceCard(context),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+        onRefresh: _loadWallet,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(25),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBalanceCard(context),
+              const SizedBox(height: 24),
 
-            const SizedBox(height: 40),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryTile(
+                      'Total Earned',
+                      '+\$${totalEarned.toStringAsFixed(2)}',
+                      Icons.arrow_downward_rounded,
+                      Colors.green.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSummaryTile(
+                      'Total Spent',
+                      '-\$${totalSpent.toStringAsFixed(2)}',
+                      Icons.arrow_upward_rounded,
+                      Colors.red.shade400,
+                    ),
+                  ),
+                ],
+              ),
 
-            // 💳 SAVED METHODS
-            _sectionHeader("SAVED PAYMENT METHODS"),
-            const SizedBox(height: 15),
-            _buildPaymentMethod(Icons.credit_card, "Visa ending in 4242", "Exp 12/26"),
-            _buildPaymentMethod(Icons.apple, "Apple Pay", "Default Method"),
+              const SizedBox(height: 32),
 
-            TextButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add, size: 18, color: Colors.black),
-              label: Text("Add new method", style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13)),
-            ),
+              _sectionHeader('TRANSACTION HISTORY'),
+              const SizedBox(height: 14),
 
-            const SizedBox(height: 40),
-
-            // 📜 TRANSACTION HISTORY
-            _sectionHeader("RECENT TRANSACTIONS"),
-            const SizedBox(height: 15),
-            _buildTransaction("Vintage Chanel Bag", "+\$450.00", "Payout", true),
-            _buildTransaction("Streetwear Hoodie", "-\$85.00", "Purchase", false),
-            _buildTransaction("Levi's 501", "+\$60.00", "Payout", true),
-          ],
+              transactions.isEmpty
+                  ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(30),
+                  child: Column(
+                    children: [
+                      Icon(Icons.receipt_long_outlined,
+                          size: 50, color: Colors.grey.shade200),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No transactions yet',
+                        style: GoogleFonts.syne(
+                          color: Colors.grey.shade400,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+                  : Column(
+                children: transactions
+                    .map((t) => _buildTransaction(t))
+                    .toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.syne(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black45, letterSpacing: 1),
-    );
-  }
-
+  // ================= BALANCE CARD =================
   Widget _buildBalanceCard(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -76,95 +156,165 @@ class PaymentsPayoutsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Vinty Balance", style: GoogleFonts.inter(color: Colors.white70, fontSize: 14)),
+          Text('Vinty Wallet',
+              style: GoogleFonts.inter(
+                  color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
-          Text("\$1,240.50", style: GoogleFonts.syne(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+          Text(
+            '\$${balance.toStringAsFixed(2)}',
+            style: GoogleFonts.syne(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text('Available balance',
+              style: GoogleFonts.inter(
+                  color: Colors.white38, fontSize: 12)),
           const SizedBox(height: 25),
+
           SizedBox(
             width: double.infinity,
-            height: 55,
+            height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
                 elevation: 0,
               ),
-              onPressed: () {
+              onPressed: balance <= 0
+                  ? null
+                  : () {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (context) => const CashOutSheet(availableBalance: 1240.50),
+                  builder: (_) =>
+                      CashOutSheet(availableBalance: balance),
                 );
               },
-              child: Text("CASH OUT", style: GoogleFonts.syne(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.5)),
+              child: Text(
+                'CASH OUT',
+                style: GoogleFonts.syne(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= SUMMARY TILE =================
+  Widget _buildSummaryTile(
+      String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: GoogleFonts.inter(
+                      fontSize: 11, color: Colors.grey)),
+              Text(value,
+                  style: GoogleFonts.syne(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: color)),
+            ],
           )
         ],
       ),
     );
   }
 
-  Widget _buildPaymentMethod(IconData icon, String title, String subtitle) {
+  // ================= TRANSACTION =================
+  Widget _buildTransaction(Map<String, dynamic> t) {
+    final isSale = t['type'] == 'sale';
+    final isCompleted = t['status'] == 'completed';
+
+    // SAFE PARSE FIX HERE 👇
+    final price =
+        double.tryParse(t['final_price'].toString()) ?? 0.0;
+
+    final title = t['title'] ?? 'Item';
+    final status = (t['status'] ?? 'pending').toString().toUpperCase();
+
+    final showPositive = isSale && isCompleted;
+    final showNegative = !isSale;
+
+    final amountText = showPositive
+        ? '+\$${price.toStringAsFixed(2)}'
+        : showNegative
+        ? '-\$${price.toStringAsFixed(2)}'
+        : '\$${price.toStringAsFixed(2)}';
+
+    final amountColor = showPositive
+        ? Colors.green
+        : showNegative
+        ? Colors.red
+        : Colors.orange;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade100),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.black),
-          const SizedBox(width: 15),
+          const Icon(Icons.receipt_long),
+          const SizedBox(width: 12),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(subtitle, style: GoogleFonts.inter(color: Colors.grey, fontSize: 12)),
+                Text(title,
+                    style: GoogleFonts.syne(
+                        fontWeight: FontWeight.w700)),
+                Text(status,
+                    style: GoogleFonts.inter(
+                        fontSize: 10, color: Colors.grey)),
               ],
             ),
           ),
-          const Icon(Icons.more_horiz, color: Colors.grey),
+
+          Text(
+            amountText,
+            style: GoogleFonts.syne(
+              fontWeight: FontWeight.w800,
+              color: amountColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTransaction(String title, String amount, String type, bool isPositive) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
-            child: Icon(
-              isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-              size: 14,
-              color: isPositive ? Colors.green.shade700 : Colors.black,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(type, style: GoogleFonts.inter(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: isPositive ? Colors.green.shade700 : Colors.black,
-            ),
-          ),
-        ],
+  Widget _sectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.syne(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        color: Colors.black45,
+        letterSpacing: 1,
       ),
     );
   }

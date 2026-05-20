@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'constants/app_colors.dart';
-// Make sure this path is correct based on your folder structure
 import 'screens/onboarding/onboarding_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  Stripe.publishableKey =
+  'pk_test_51SYN6qE1McKnxFJ4dxJLzOfbO4MAao7AOjzQ4OuRmQMBQkPvQuR6P4fBK8u1eSZMREWIfZPZMG6C3xyphsKt2Jai00ppiVlomu';
+
+  await Stripe.instance.applySettings();
+
   runApp(const VintyApp());
 }
 
@@ -20,13 +28,11 @@ class VintyApp extends StatelessWidget {
         textTheme: GoogleFonts.syneTextTheme(),
         scaffoldBackgroundColor: AppColors.background,
       ),
-      // FIXED: Point to SplashScreen (or OnboardingScreen), NOT VintyApp
       home: const SplashScreen(),
     );
   }
 }
 
-// Ensure your SplashScreen class is either below here or imported!
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -38,11 +44,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          MaterialPageRoute(
+            builder: (context) => const OnboardingScreen(),
+          ),
         );
       }
     });
@@ -52,7 +61,13 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: Text("VINTY", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+        child: Text(
+          "VINTY",
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
