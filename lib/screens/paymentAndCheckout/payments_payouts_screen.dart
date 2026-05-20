@@ -11,15 +11,14 @@ class PaymentsPayoutsScreen extends StatefulWidget {
       _PaymentsPayoutsScreenState();
 }
 
-class _PaymentsPayoutsScreenState
-    extends State<PaymentsPayoutsScreen> {
+class _PaymentsPayoutsScreenState extends State<PaymentsPayoutsScreen> {
   bool isLoading = true;
 
   double balance = 0;
   double totalEarned = 0;
   double totalSpent = 0;
 
-  List<dynamic> transactions = [];
+  List<Map<String, dynamic>> transactions = [];
 
   @override
   void initState() {
@@ -39,7 +38,11 @@ class _PaymentsPayoutsScreenState
         totalEarned = double.tryParse(data['total_earned'].toString()) ?? 0.0;
         totalSpent = double.tryParse(data['total_spent'].toString()) ?? 0.0;
 
-        transactions = (data['transactions'] as List?) ?? [];
+        // 🔥 FIX: force proper Map casting
+        transactions = (data['transactions'] as List?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ??
+            [];
 
         isLoading = false;
       });
@@ -119,7 +122,8 @@ class _PaymentsPayoutsScreenState
                   child: Column(
                     children: [
                       Icon(Icons.receipt_long_outlined,
-                          size: 50, color: Colors.grey.shade200),
+                          size: 50,
+                          color: Colors.grey.shade200),
                       const SizedBox(height: 12),
                       Text(
                         'No transactions yet',
@@ -244,30 +248,42 @@ class _PaymentsPayoutsScreenState
 
   // ================= TRANSACTION =================
   Widget _buildTransaction(Map<String, dynamic> t) {
-    final isSale = t['type'] == 'sale';
-    final isCompleted = t['status'] == 'completed';
+    final rawType = (t['type'] ?? '').toString().toLowerCase();
+    final status = (t['status'] ?? 'pending').toString().toLowerCase();
 
-    // SAFE PARSE FIX HERE 👇
-    final price =
-        double.tryParse(t['final_price'].toString()) ?? 0.0;
-
+    final price = double.tryParse(t['final_price'].toString()) ?? 0.0;
     final title = t['title'] ?? 'Item';
-    final status = (t['status'] ?? 'pending').toString().toUpperCase();
 
-    final showPositive = isSale && isCompleted;
-    final showNegative = !isSale;
+    // 🔥 SAFE FALLBACK LOGIC
+    final isSale = rawType == 'sale';
 
-    final amountText = showPositive
-        ? '+\$${price.toStringAsFixed(2)}'
-        : showNegative
-        ? '-\$${price.toStringAsFixed(2)}'
-        : '\$${price.toStringAsFixed(2)}';
+    final isCompleted =
+        status == 'completed' || status == 'accepted';
 
-    final amountColor = showPositive
-        ? Colors.green
-        : showNegative
-        ? Colors.red
-        : Colors.orange;
+    // ================= FINAL FIXED LOGIC =================
+    bool isIncome = false;
+    bool isExpense = false;
+
+    if (isSale && isCompleted) {
+      isIncome = true;
+    } else {
+      isExpense = true; // EVERYTHING ELSE = OUT
+    }
+
+    // ================= UI VALUES =================
+    String amountText;
+    Color amountColor;
+    IconData icon;
+
+    if (isIncome) {
+      amountText = '+ \$${price.toStringAsFixed(2)}';
+      amountColor = Colors.green;
+      icon = Icons.arrow_downward_rounded;
+    } else {
+      amountText = '- \$${price.toStringAsFixed(2)}';
+      amountColor = Colors.red;
+      icon = Icons.arrow_upward_rounded;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -278,19 +294,24 @@ class _PaymentsPayoutsScreenState
       ),
       child: Row(
         children: [
-          const Icon(Icons.receipt_long),
+          Icon(icon, color: amountColor),
           const SizedBox(width: 12),
 
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: GoogleFonts.syne(
-                        fontWeight: FontWeight.w700)),
-                Text(status,
-                    style: GoogleFonts.inter(
-                        fontSize: 10, color: Colors.grey)),
+                Text(
+                  title,
+                  style: GoogleFonts.syne(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  status.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: Colors.grey,
+                  ),
+                ),
               ],
             ),
           ),
@@ -307,6 +328,7 @@ class _PaymentsPayoutsScreenState
     );
   }
 
+  // ================= HEADER =================
   Widget _sectionHeader(String title) {
     return Text(
       title,
