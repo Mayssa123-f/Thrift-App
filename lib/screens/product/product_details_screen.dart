@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/models/product_model.dart';
 
 import '../../constants/app_colors.dart';
@@ -18,7 +19,7 @@ class ProductDetailsScreen extends StatefulWidget {
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   String selectedSize = '';
-
+  final CartController cartController = CartController();
   bool isFav = false;
   bool isLoadingFav = true;
   bool isOpeningChat = false;
@@ -27,8 +28,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void initState() {
     super.initState();
 
-    selectedSize =
-        widget.product.sizes.isNotEmpty ? widget.product.sizes.first : '';
+    selectedSize = widget.product.sizes.isNotEmpty
+        ? widget.product.sizes.first
+        : '';
 
     _initFavorite();
   }
@@ -70,11 +72,24 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
   }
 
-  void _addToCart() {
-    _showSnack('${widget.product.title} added to cart (mock)');
+  Future<void> _addToCart() async {
+    try {
+      await cartController.addToCart(
+        productId: widget.product.id,
+        selectedSize: selectedSize.isNotEmpty ? selectedSize : null,
+      );
+
+      if (!mounted) return;
+
+      _showSnack('${widget.product.title} added to cart');
+    } catch (e) {
+      if (!mounted) return;
+
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
-  Future<void> _messageSeller() async {
+Future<void> _messageSeller() async {
   if (isOpeningChat) return;
 
   setState(() => isOpeningChat = true);
@@ -129,9 +144,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         backgroundColor: Colors.black87,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -204,9 +217,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
               padding: const EdgeInsets.fromLTRB(15, 30, 15, 70),
               child: Column(
@@ -290,8 +301,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color:
-                                selected ? Colors.black : Colors.grey.shade100,
+                            color: selected
+                                ? Colors.black
+                                : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -340,9 +352,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
                 onPressed: _addToCart,
                 child: const Text('Add to Cart'),
               ),

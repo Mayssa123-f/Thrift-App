@@ -33,4 +33,3 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
 
 export default app;
-
