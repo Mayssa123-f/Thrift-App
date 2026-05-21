@@ -218,15 +218,80 @@ class _MyListingsScreenState extends State<MyListingsScreen>
                 Positioned(
                   top: 10,
                   right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.more_vert,
-                      size: 16,
+                  child: PopupMenuButton<String>(
+                    color: Colors.white,
+                    onSelected: (value) async {
+                      if (value == 'delete') {
+                        final confirm = await showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Delete Listing'),
+                            content: const Text(
+                              'Are you sure you want to delete this listing?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          try {
+                            await productController.deleteProduct(product.id);
+
+                            _loadListings();
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Listing deleted'),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                              ),
+                            );
+                          }
+                        }
+                      }
+
+                      if (value == 'edit') {
+                        _showEditDialog(product);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.more_vert,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -274,5 +339,97 @@ class _MyListingsScreenState extends State<MyListingsScreen>
 
   Widget _buildDraftsList() {
     return _buildEmptyState('No drafts yet');
+  }
+  Future<void> _showEditDialog(ProductModel product) async {
+    final titleController =
+    TextEditingController(text: product.title);
+
+    final descController =
+    TextEditingController(text: product.description);
+
+    final priceController =
+    TextEditingController(text: product.price.toString());
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Edit Listing'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Price',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await productController.updateProduct(
+                    productId: product.id,
+                    title: titleController.text,
+                    description: descController.text,
+                    price: double.parse(priceController.text),
+                    category: product.category ?? 'Jackets',
+                    size: product.size ?? 'M',
+                    conditionType:
+                    product.conditionType ?? 'good',
+                    gender: product.gender ?? 'unisex',
+                    styleTag:
+                    product.styleTag ?? 'Vintage',
+                  );
+
+                  Navigator.pop(context);
+
+                  _loadListings();
+
+                  if (!mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Listing updated'),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString()),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
