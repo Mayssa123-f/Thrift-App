@@ -121,23 +121,34 @@ class _MainScreenState extends State<MainScreen> {
 
       body: IndexedStack(index: currentIndex, children: pages),
 
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 95),
-        child: FloatingActionButton(
-          backgroundColor: Colors.black,
-          elevation: 4,
-          onPressed: openMessages,
-          child: const Icon(
-            Icons.chat_bubble_outline_rounded,
-            color: Colors.white,
-            size: 24,
-          ),
+  floatingActionButton: FloatingActionButton.extended(
+    backgroundColor: Colors.black,
+    elevation: 3,
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ConversationsScreen(),
         ),
+      );
+    },
+    icon: const Icon(
+      Icons.chat_bubble_outline_rounded,
+      color: Colors.white,
+    ),
+    label: Text(
+      "Messages",
+      style: GoogleFonts.syne(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
       ),
+    ),
+  ),
 
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: _buildBottomNav(),
-    );
+  floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+  bottomNavigationBar: _buildBottomNav(),
+);
   }
 
   AppBar _buildAppBar() {

@@ -7,6 +7,11 @@ class ChatMessageModel {
   final int? offerId;
   final DateTime createdAt;
 
+  final int? productId;
+  final String? productTitle;
+  final String? productImage;
+  final dynamic productPrice;
+
   ChatMessageModel({
     required this.id,
     required this.conversationId,
@@ -15,6 +20,10 @@ class ChatMessageModel {
     this.messageText,
     this.offerId,
     required this.createdAt,
+    this.productId,
+    this.productTitle,
+    this.productImage,
+    this.productPrice,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +35,11 @@ class ChatMessageModel {
       messageText: json['message_text'],
       offerId: json['offer_id'],
       createdAt: DateTime.parse(json['created_at']),
+
+      productId: json['product_id'],
+      productTitle: json['product_title'],
+      productImage: json['product_image'],
+      productPrice: json['product_price'],
     );
   }
 }
