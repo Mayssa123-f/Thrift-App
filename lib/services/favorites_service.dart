@@ -33,7 +33,7 @@ class FavoritesService {
       return false;
     }
   }
-
+  
   /// GET ALL FAVORITES
   static Future<List<ProductModel>> getFavorites() async {
     try {
@@ -56,4 +56,5 @@ class FavoritesService {
     }
     return fallback;
   }
+  
 }

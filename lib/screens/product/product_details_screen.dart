@@ -89,36 +89,50 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
   }
 
-  Future<void> _messageSeller() async {
-    if (isOpeningChat) return;
+Future<void> _messageSeller() async {
+  if (isOpeningChat) return;
 
-    setState(() => isOpeningChat = true);
+  setState(() => isOpeningChat = true);
 
-    try {
-      final conversation = await ChatController().startConversation(
-        productId: widget.product.id,
-        sellerId: widget.product.sellerId,
-      );
+  try {
+    final chatController = ChatController();
 
-      if (!mounted) return;
+    final conversation =
+        await chatController.startConversation(
+      productId: widget.product.id,
+      sellerId: widget.product.sellerId,
+    );
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(conversation: conversation),
+    // SEND PRODUCT CARD MESSAGE
+    await chatController.sendProductMessage(
+      conversationId: conversation.id,
+      productId: widget.product.id,
+    );
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatRoomScreen(
+          conversation: conversation,
+          receiverName: widget.product.seller,
+          receiverImage: widget.product.sellerImage,
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
 
-      _showSnack(e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => isOpeningChat = false);
-      }
+    _showSnack(
+      e.toString().replaceFirst('Exception: ', ''),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => isOpeningChat = false);
     }
   }
-
+}
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

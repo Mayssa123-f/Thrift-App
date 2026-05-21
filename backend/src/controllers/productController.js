@@ -305,3 +305,152 @@ export const createProduct = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// UPDATE PRODUCT
+export const updateProduct = async (req, res) => {
+  try {
+    const sellerId = req.user.id;
+    const { id } = req.params;
+
+    const {
+      title,
+      description,
+      price,
+      category,
+      size,
+      condition_type,
+      gender,
+      style_tag,
+    } = req.body;
+
+    const [products] = await db.query(
+      `SELECT * FROM products WHERE id = ? AND seller_id = ?`,
+      [id, sellerId]
+    );
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    const [categories] = await db.query(
+      `SELECT id FROM categories WHERE name = ?`,
+      [category]
+    );
+
+    if (categories.length === 0) {
+      return res.status(400).json({
+        message: "Category not found",
+      });
+    }
+
+    const categoryId = categories[0].id;
+
+    await db.query(
+      `UPDATE products
+       SET
+        title = ?,
+        description = ?,
+        price = ?,
+        category_id = ?,
+        size = ?,
+        condition_type = ?,
+        gender = ?,
+        style_tag = ?
+       WHERE id = ?`,
+      [
+        title,
+        description,
+        price,
+        categoryId,
+        size,
+        condition_type,
+        gender,
+        style_tag,
+        id,
+      ]
+    );
+
+    const [updated] = await db.query(
+      `
+      SELECT
+        p.id,
+        p.title,
+        p.description,
+        p.price,
+        p.currency,
+        p.brand,
+        p.size,
+        p.condition_type,
+        p.gender,
+        p.style_tag,
+        p.location,
+        p.is_available,
+
+        c.name AS category,
+
+        u.id AS seller_id,
+        u.full_name AS seller,
+
+        pi.image_url AS image
+
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN product_images pi
+        ON p.id = pi.product_id AND pi.is_primary = TRUE
+
+      WHERE p.id = ?
+      `,
+      [id]
+    );
+
+    res.json({
+      message: "Product updated",
+      product: updated[0],
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// DELETE PRODUCT
+export const deleteProduct = async (req, res) => {
+  try {
+    const sellerId = req.user.id;
+    const { id } = req.params;
+
+    const [products] = await db.query(
+      `SELECT * FROM products WHERE id = ? AND seller_id = ?`,
+      [id, sellerId]
+    );
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    await db.query(
+      `DELETE FROM product_images WHERE product_id = ?`,
+      [id]
+    );
+
+    await db.query(
+      `DELETE FROM products WHERE id = ?`,
+      [id]
+    );
+
+    res.json({
+      message: "Product deleted successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
