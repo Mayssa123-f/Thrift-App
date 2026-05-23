@@ -8,6 +8,9 @@ class ChatController {
   Future<List<ConversationModel>> getConversations() {
     return _chatService.getConversations();
   }
+Future<ConversationModel> getConversationById(int conversationId) async {
+  return await _chatService.getConversationById(conversationId);
+}
 
   Future<ConversationModel> startConversation({
     required int productId,

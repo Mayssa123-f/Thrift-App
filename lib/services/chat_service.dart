@@ -14,16 +14,25 @@ class ChatService {
         .toList();
   }
 
+  Future<ConversationModel> getConversationById(int conversationId) async {
+    try {
+      final response = await dio.get('/conversations/$conversationId');
+
+      return ConversationModel.fromJson(response.data['conversation']);
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load conversation',
+      );
+    }
+  }
+
   Future<ConversationModel> createConversation({
     required int productId,
     required int sellerId,
   }) async {
     final response = await dio.post(
       '/conversations',
-      data: {
-        'product_id': productId,
-        'seller_id': sellerId,
-      },
+      data: {'product_id': productId, 'seller_id': sellerId},
     );
 
     return ConversationModel.fromJson(response.data['conversation']);
@@ -36,36 +45,28 @@ class ChatService {
         .map((json) => ChatMessageModel.fromJson(json))
         .toList();
   }
-Future<ChatMessageModel> sendMessage({
-  required int conversationId,
-  required String messageText,
-}) async {
-  final response = await dio.post(
-    '/messages',
-    data: {
-      'conversation_id': conversationId,
-      'message_text': messageText,
-    },
-  );
 
-  return ChatMessageModel.fromJson(
-    response.data['message'],
-  );
-}
+  Future<ChatMessageModel> sendMessage({
+    required int conversationId,
+    required String messageText,
+  }) async {
+    final response = await dio.post(
+      '/messages',
+      data: {'conversation_id': conversationId, 'message_text': messageText},
+    );
+
+    return ChatMessageModel.fromJson(response.data['message']);
+  }
+
   Future<ChatMessageModel> sendProductMessage({
-  required int conversationId,
-  required int productId,
-}) async {
-  final response = await dio.post(
-    '/messages/product',
-    data: {
-      'conversation_id': conversationId,
-      'product_id': productId,
-    },
-  );
+    required int conversationId,
+    required int productId,
+  }) async {
+    final response = await dio.post(
+      '/messages/product',
+      data: {'conversation_id': conversationId, 'product_id': productId},
+    );
 
-  return ChatMessageModel.fromJson(response.data['message']);
-}
-
-
+    return ChatMessageModel.fromJson(response.data['message']);
+  }
 }

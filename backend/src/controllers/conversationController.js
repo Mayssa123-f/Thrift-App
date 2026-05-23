@@ -129,3 +129,61 @@ export const getConversations = async (req, res) => {
     });
   }
 };
+export const getConversationById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const [conversations] = await db.query(
+      `
+      SELECT 
+        c.id,
+        c.product_id,
+        c.buyer_id,
+        c.seller_id,
+        c.created_at,
+
+        CASE
+          WHEN c.buyer_id = ? THEN seller.full_name
+          ELSE buyer.full_name
+        END AS receiver_name,
+
+        CASE
+          WHEN c.buyer_id = ? THEN seller.profile_image_url
+          ELSE buyer.profile_image_url
+        END AS receiver_image,
+
+        p.title AS product_title,
+
+        (
+          SELECT pi.image_url
+          FROM product_images pi
+          WHERE pi.product_id = p.id
+          AND pi.is_primary = 1
+          LIMIT 1
+        ) AS product_image,
+
+        p.price AS product_price
+
+      FROM conversations c
+      JOIN users buyer ON c.buyer_id = buyer.id
+      JOIN users seller ON c.seller_id = seller.id
+      LEFT JOIN products p ON c.product_id = p.id
+
+      WHERE c.id = ?
+      AND (c.buyer_id = ? OR c.seller_id = ?)
+      LIMIT 1
+      `,
+      [userId, userId, id, userId, userId]
+    );
+
+    if (conversations.length === 0) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    res.json({ conversation: conversations[0] });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

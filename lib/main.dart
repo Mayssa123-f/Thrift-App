@@ -13,6 +13,7 @@ import 'screens/main/main_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'utils/token_storage.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -29,7 +30,7 @@ Future<void> main() async {
     badge: true,
     sound: true,
   );
-
+  
   runApp(const VintyApp());
 }
 
@@ -39,6 +40,7 @@ class VintyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Vinty',
       theme: ThemeData(
@@ -71,7 +73,9 @@ class _AuthCheckScreenState extends State<AuthCheckScreen>
   @override
   void initState() {
     super.initState();
-
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await NotificationService().initNotifications();
+  });
     _introController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),

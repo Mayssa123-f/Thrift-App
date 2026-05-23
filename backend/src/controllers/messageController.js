@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sendPushNotification } from "../utils/sendNotifications.js";
+import { createNotification } from "../utils/createNotification.js";
 
 export const getMessages = async (req, res) => {
   try {
@@ -23,7 +24,7 @@ export const getMessages = async (req, res) => {
       WHERE cm.conversation_id = ?
       ORDER BY cm.created_at ASC
       `,
-      [conversationId]
+      [conversationId],
     );
 
     res.json({ messages });
@@ -46,7 +47,7 @@ export const sendMessage = async (req, res) => {
 
     const [conversationRows] = await db.query(
       `SELECT buyer_id, seller_id FROM conversations WHERE id = ?`,
-      [conversation_id]
+      [conversation_id],
     );
 
     if (conversationRows.length === 0) {
@@ -75,7 +76,7 @@ export const sendMessage = async (req, res) => {
       `INSERT INTO chat_messages 
        (conversation_id, sender_id, message_type, message_text)
        VALUES (?, ?, 'text', ?)`,
-      [conversation_id, senderId, message_text]
+      [conversation_id, senderId, message_text],
     );
 
     const [message] = await db.query(
@@ -97,8 +98,16 @@ export const sendMessage = async (req, res) => {
       LEFT JOIN products p ON cm.product_id = p.id
       WHERE cm.id = ?
       `,
-      [result.insertId]
+      [result.insertId],
     );
+    await createNotification({
+      userId: receiverId,
+      actorId: senderId,
+      type: "message",
+      title: `New message from ${message[0].sender_name || "VINTY"}`,
+      body: message_text,
+      conversationId: conversation_id,
+    });
 
     await sendPushNotification({
       userId: receiverId,
@@ -136,12 +145,7 @@ export const sendProductMessage = async (req, res) => {
       `INSERT INTO chat_messages
        (conversation_id, sender_id, message_type, message_text, product_id)
        VALUES (?, ?, 'product', ?, ?)`,
-      [
-        conversation_id,
-        senderId,
-        "Started chat from this product",
-        product_id,
-      ]
+      [conversation_id, senderId, "Started chat from this product", product_id],
     );
 
     const [message] = await db.query(
@@ -161,7 +165,7 @@ export const sendProductMessage = async (req, res) => {
       LEFT JOIN products p ON cm.product_id = p.id
       WHERE cm.id = ?
       `,
-      [result.insertId]
+      [result.insertId],
     );
 
     res.status(201).json({
