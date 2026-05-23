@@ -12,6 +12,8 @@ import offerRoutes from "./routes/offerRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import botRoutes from "./routes/botRoutes.js";
+
+import notificationRoutes from "./routes/notificationRoutes.js";
 const app = express();
 
 app.use(cors());
@@ -32,4 +34,5 @@ app.use("/api/offers", offerRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/bot", botRoutes);
+app.use("/api/notifications", notificationRoutes);
 export default app;

@@ -1,3 +1,5 @@
+import 'package:thrift_app/services/notification_service.dart';
+
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../utils/token_storage.dart';
@@ -5,9 +7,8 @@ import '../services/google_auth_service.dart';
 
 class AuthController {
   final AuthService _authService = AuthService();
-
   final GoogleAuthService _googleAuthService = GoogleAuthService();
-
+  final NotificationService _notificationService = NotificationService();
   Future<UserModel> continueWithGoogle() async {
     final idToken = await _googleAuthService.getGoogleIdToken();
 
@@ -15,7 +16,10 @@ class AuthController {
       throw Exception("Google sign-in cancelled");
     }
 
-    return await _authService.loginWithGoogle(idToken);
+    final user = await _authService.loginWithGoogle(idToken);
+    await _notificationService.saveFcmToken();
+
+    return user;
   }
 
   Future<UserModel> login(String email, String password) async {
@@ -23,7 +27,11 @@ class AuthController {
       throw Exception('Email and password are required');
     }
 
-    return await _authService.login(email: email, password: password);
+    final user = await _authService.login(email: email, password: password);
+
+    await _notificationService.saveFcmToken();
+
+    return user;
   }
 
   Future<UserModel> register(
@@ -39,11 +47,15 @@ class AuthController {
       throw Exception('Password must be at least 6 characters');
     }
 
-    return await _authService.register(
+    final user = await _authService.register(
       fullName: fullName,
       email: email,
       password: password,
     );
+
+    await _notificationService.saveFcmToken();
+
+    return user;
   }
 
   Future<UserModel> getProfile() async {
@@ -69,8 +81,9 @@ class AuthController {
   }
 
   Future<void> logout() async {
-  await _authService.logout();
-}
+    await _authService.logout();
+  }
+
   Future<void> forgotPassword(String email) async {
     if (email.trim().isEmpty) {
       throw Exception('Email is required');

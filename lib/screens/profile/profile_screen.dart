@@ -181,13 +181,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.person_outline_rounded,
                     'Edit Profile',
                     '',
-                    () {
-                      Navigator.push(
+                    () async {
+                      final updated = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const EditProfileScreen(),
                         ),
                       );
+
+                      if (updated == true) {
+                        await _loadUser();
+                        await _loadAccountCounts();
+                      }
                     },
                   ),
                   _menuItem(
@@ -274,13 +279,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final updated = await Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const EditProfileScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
             );
+
+            if (updated == true) {
+              await _loadUser();
+              await _loadAccountCounts();
+            }
           },
           child: Container(
             padding: const EdgeInsets.all(10),

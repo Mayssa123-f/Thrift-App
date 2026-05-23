@@ -1,6 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 // import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/firebase_options.dart';
+import 'package:thrift_app/services/notification_service.dart';
 
 import 'constants/app_colors.dart';
 import 'controllers/auth_controller.dart';
@@ -16,6 +20,15 @@ Future<void> main() async {
   //     'pk_test_51SYN6qE1McKnxFJ4dxJLzOfbO4MAao7AOjzQ4OuRmQMBQkPvQuR6P4fBK8u1eSZMREWIfZPZMG6C3xyphsKt2Jai00ppiVlomu';
 
   // await Stripe.instance.applySettings();
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
 
   runApp(const VintyApp());
 }
@@ -84,6 +97,10 @@ class _AuthCheckScreenState extends State<AuthCheckScreen>
   }
 
   Future<void> _goTo(Widget screen) async {
+    final token = await FirebaseMessaging.instance.getToken();
+
+    print("FCM TOKEN:");
+    print(token);
     await Future.delayed(const Duration(milliseconds: 2300));
 
     if (!mounted) return;
@@ -119,6 +136,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen>
       await authController.getProfile();
 
       if (!mounted) return;
+      await NotificationService().saveFcmToken();
 
       await _goTo(const MainScreen());
     } catch (_) {
@@ -167,10 +185,10 @@ class _AuthCheckScreenState extends State<AuthCheckScreen>
                     softWrap: false,
                     style: GoogleFonts.syne(
                       color: Colors.white,
-                      fontSize: 74,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -2,
-                      height: 1,
+                      fontSize: 94,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 15,
+                      height: 10,
                     ),
                   ),
                 ),

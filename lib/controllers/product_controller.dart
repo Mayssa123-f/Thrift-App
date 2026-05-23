@@ -31,6 +31,9 @@ class ProductController {
     required String conditionType,
     required String gender,
     required String styleTag,
+    required String brand,
+    required String color,
+   
     required List<File> images,
   }) async {
     return await _productService.createProduct(
@@ -42,6 +45,9 @@ class ProductController {
       conditionType: conditionType,
       gender: gender,
       styleTag: styleTag,
+      brand: brand,
+      color: color,
+  
       images: images,
     );
   }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thrift_app/models/product_model.dart';
 import '../../models/conversation_model.dart';
-import '../../models/product_model.dart';
+
 import '../../services/bot_service.dart';
 import '../../services/chat_service.dart';
 import '../product/product_details_screen.dart';

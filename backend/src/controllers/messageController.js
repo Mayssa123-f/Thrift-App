@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { sendPushNotification } from "../utils/sendNotifications.js";
 
 export const getMessages = async (req, res) => {
   try {
@@ -43,6 +44,33 @@ export const sendMessage = async (req, res) => {
       });
     }
 
+    const [conversationRows] = await db.query(
+      `SELECT buyer_id, seller_id FROM conversations WHERE id = ?`,
+      [conversation_id]
+    );
+
+    if (conversationRows.length === 0) {
+      return res.status(404).json({
+        message: "Conversation not found",
+      });
+    }
+
+    const conversation = conversationRows[0];
+
+    if (
+      senderId !== conversation.buyer_id &&
+      senderId !== conversation.seller_id
+    ) {
+      return res.status(403).json({
+        message: "You are not part of this conversation",
+      });
+    }
+
+    const receiverId =
+      senderId === conversation.buyer_id
+        ? conversation.seller_id
+        : conversation.buyer_id;
+
     const [result] = await db.query(
       `INSERT INTO chat_messages 
        (conversation_id, sender_id, message_type, message_text)
@@ -54,6 +82,7 @@ export const sendMessage = async (req, res) => {
       `
       SELECT 
         cm.*,
+        sender.full_name AS sender_name,
         p.title AS product_title,
         p.price AS product_price,
         (
@@ -64,11 +93,24 @@ export const sendMessage = async (req, res) => {
           LIMIT 1
         ) AS product_image
       FROM chat_messages cm
+      LEFT JOIN users sender ON cm.sender_id = sender.id
       LEFT JOIN products p ON cm.product_id = p.id
       WHERE cm.id = ?
       `,
       [result.insertId]
     );
+
+    await sendPushNotification({
+      userId: receiverId,
+      title: `New message from ${message[0].sender_name || "VINTY"}`,
+      body: message_text,
+      data: {
+        type: "message",
+        conversation_id: String(conversation_id),
+        sender_id: String(senderId),
+        message_id: String(result.insertId),
+      },
+    });
 
     res.status(201).json({
       message: message[0],
