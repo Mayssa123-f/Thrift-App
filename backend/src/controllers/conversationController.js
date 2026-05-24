@@ -12,10 +12,10 @@ export const createConversation = async (req, res) => {
     }
 
     const [existing] = await db.query(
-  `SELECT * FROM conversations
+      `SELECT * FROM conversations
    WHERE buyer_id = ? AND seller_id = ?`,
-  [buyerId, seller_id]
-);
+      [buyerId, seller_id],
+    );
 
     if (existing.length > 0) {
       return res.json({
@@ -26,12 +26,12 @@ export const createConversation = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO conversations (product_id, buyer_id, seller_id)
        VALUES (?, ?, ?)`,
-      [product_id, buyerId, seller_id]
+      [product_id, buyerId, seller_id],
     );
 
     const [conversation] = await db.query(
       "SELECT * FROM conversations WHERE id = ?",
-      [result.insertId]
+      [result.insertId],
     );
 
     res.status(201).json({
@@ -67,6 +67,22 @@ export const getConversations = async (req, res) => {
         END AS receiver_image,
 
         p.title AS product_title,
+
+        (
+          SELECT cm.created_at
+          FROM chat_messages cm
+          WHERE cm.conversation_id = c.id
+          ORDER BY cm.created_at DESC
+          LIMIT 1
+        ) AS last_message_at,
+
+        (
+          SELECT COUNT(*)
+          FROM chat_messages cm
+          WHERE cm.conversation_id = c.id
+          AND cm.sender_id != ?
+          AND cm.is_read = FALSE
+        ) AS unread_count,
 
         (
           SELECT pi.image_url
@@ -108,25 +124,15 @@ export const getConversations = async (req, res) => {
       WHERE c.buyer_id = ?
       OR c.seller_id = ?
 
-      ORDER BY c.created_at DESC
+      ORDER BY last_message_at DESC, c.created_at DESC
       `,
-      [
-        userId,
-        userId,
-        userId,
-        userId,
-      ]
+      [userId, userId, userId, userId, userId],
     );
 
-    res.json({
-      conversations,
-    });
+    res.json({ conversations });
   } catch (error) {
     console.log(error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 export const getConversationById = async (req, res) => {
@@ -174,7 +180,7 @@ export const getConversationById = async (req, res) => {
       AND (c.buyer_id = ? OR c.seller_id = ?)
       LIMIT 1
       `,
-      [userId, userId, id, userId, userId]
+      [userId, userId, id, userId, userId],
     );
 
     if (conversations.length === 0) {

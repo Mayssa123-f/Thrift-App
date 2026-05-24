@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/screens/mylisting/my_listing_screen.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/controllers/product_controller.dart';
+import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/favorites_service.dart';
 import '../../constants/app_colors.dart';
 import '../../data/app_data.dart';
@@ -174,6 +175,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _loadAccountCounts();
                     },
                   ),
+                  _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                    );
+                  }),
                   const SizedBox(height: 20),
                   _sectionLabel('SETTINGS'),
                   const SizedBox(height: 12),

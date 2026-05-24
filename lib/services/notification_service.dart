@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/controllers/chat_controller.dart';
 import 'package:thrift_app/main.dart';
 import 'package:thrift_app/models/notification_model.dart';
@@ -52,7 +55,6 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(androidChannel);
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
 
@@ -67,23 +69,11 @@ class NotificationService {
         print('User already inside this chat. Notification skipped.');
         return;
       }
+
       onNotificationReceived?.call();
       onNotificationListShouldRefresh?.call();
-      _localNotifications.show(
-        id: notification.hashCode,
-        title: notification.title,
-        body: notification.body,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'messages_channel',
-            'Messages',
-            channelDescription: 'Notifications for new messages',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        payload: message.data['conversation_id'],
-      );
+
+      _showInAppBanner(message);
     });
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final conversationId = message.data['conversation_id'];
@@ -168,5 +158,169 @@ class NotificationService {
 
   Future<void> clearNotifications() async {
     await dio.delete('/notifications/clear');
+  }
+
+  void _showInAppBanner(RemoteMessage message) {
+    final overlay = navigatorKey.currentState?.overlay;
+
+    if (overlay == null) {
+      print('Overlay is null');
+      return;
+    }
+
+    final notification = message.notification;
+
+    if (notification == null) return;
+
+    final String? imageUrl =
+        message.data['actor_image'] ??
+        message.data['sender_image'] ??
+        message.data['buyer_image'];
+
+    OverlayEntry? overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          top: MediaQuery.of(context).padding.top + 4,
+          left: 14,
+          right: 14,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: -60, end: 0),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, value),
+                child: child,
+              );
+            },
+            child: Material(
+              color: Colors.transparent,
+              child: GestureDetector(
+                onTap: () {
+                  overlayEntry?.remove();
+
+                  final conversationId = message.data['conversation_id'];
+
+                  if (conversationId != null) {
+                    _openChatFromNotification(conversationId);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.94),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.26),
+                        blurRadius: 22,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // PROFILE IMAGE
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.08),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.08),
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: imageUrl != null && imageUrl.isNotEmpty
+                              ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) {
+                                    return const Icon(
+                                      Icons.person_outline_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    );
+                                  },
+                                )
+                              : const Icon(
+                                  Icons.person_outline_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 14),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    notification.title ?? 'VINTY',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                Text(
+                                  'now',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withOpacity(0.55),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 7),
+
+                            Text(
+                              notification.body ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withOpacity(0.72),
+                                fontSize: 12,
+                                height: 1.35,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(overlayEntry);
+
+    Timer(const Duration(seconds: 4), () {
+      overlayEntry?.remove();
+    });
   }
 }

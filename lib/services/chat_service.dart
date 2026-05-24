@@ -26,6 +26,16 @@ class ChatService {
     }
   }
 
+  Future<void> markConversationAsRead(int conversationId) async {
+    try {
+      await dio.put('/messages/read/$conversationId');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to mark messages as read',
+      );
+    }
+  }
+
   Future<ConversationModel> createConversation({
     required int productId,
     required int sellerId,

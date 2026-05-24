@@ -100,14 +100,15 @@ export const sendMessage = async (req, res) => {
       `,
       [result.insertId],
     );
-    await createNotification({
-      userId: receiverId,
-      actorId: senderId,
-      type: "message",
-      title: `New message from ${message[0].sender_name || "VINTY"}`,
-      body: message_text,
-      conversationId: conversation_id,
-    });
+
+    // await createNotification({
+    //   userId: receiverId,
+    //   actorId: senderId,
+    //   type: "message",
+    //   title: `New message from ${message[0].sender_name || "VINTY"}`,
+    //   body: message_text,
+    //   conversationId: conversation_id,
+    // });
 
     await sendPushNotification({
       userId: receiverId,
@@ -129,7 +130,32 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+export const markConversationMessagesAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { conversationId } = req.params;
 
+    await db.query(
+      `
+      UPDATE chat_messages
+      SET is_read = TRUE
+      WHERE conversation_id = ?
+      AND sender_id != ?
+      `,
+      [conversationId, userId],
+    );
+
+    res.json({
+      message: "Messages marked as read",
+    });
+  } catch (error) {
+    console.log("markConversationMessagesAsRead error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
 export const sendProductMessage = async (req, res) => {
   try {
     const senderId = req.user.id;

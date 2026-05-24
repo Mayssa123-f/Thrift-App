@@ -44,6 +44,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.initState();
     NotificationService.setActiveConversation(widget.conversation.id);
     _loadMessages();
+  
 
     refreshTimer = Timer.periodic(
       const Duration(seconds: 2),
@@ -54,6 +55,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Future<void> _loadMessages() async {
     try {
       final data = await chatController.getMessages(widget.conversation.id);
+
+      await chatController.markConversationAsRead(widget.conversation.id);
 
       if (!mounted) return;
 

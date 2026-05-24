@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:thrift_app/models/notification_model.dart';
+import 'package:thrift_app/screens/order/order_details_screen.dart';
 import 'package:thrift_app/services/notification_service.dart';
 import '../../controllers/chat_controller.dart';
 import '../chat/chat_room_screen.dart';
@@ -263,6 +264,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           await _notificationController.markAsRead(notification.id);
         }
 
+        if (!mounted) return;
+
+        if (notification.type == 'order' && notification.orderId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  OrderDetailsScreen(orderId: notification.orderId!),
+            ),
+          );
+          return;
+        }
+
         if (notification.type == 'message' &&
             notification.conversationId != null) {
           final conversation = await _chatController.getConversationById(
@@ -279,6 +293,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
       },
+
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),

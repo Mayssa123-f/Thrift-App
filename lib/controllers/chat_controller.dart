@@ -8,9 +8,10 @@ class ChatController {
   Future<List<ConversationModel>> getConversations() {
     return _chatService.getConversations();
   }
-Future<ConversationModel> getConversationById(int conversationId) async {
-  return await _chatService.getConversationById(conversationId);
-}
+
+  Future<ConversationModel> getConversationById(int conversationId) async {
+    return await _chatService.getConversationById(conversationId);
+  }
 
   Future<ConversationModel> startConversation({
     required int productId,
@@ -35,6 +36,10 @@ Future<ConversationModel> getConversationById(int conversationId) async {
       conversationId: conversationId,
       messageText: messageText,
     );
+  }
+
+  Future<void> markConversationAsRead(int conversationId) async {
+    await _chatService.markConversationAsRead(conversationId);
   }
 
   // PRODUCT CARD MESSAGE

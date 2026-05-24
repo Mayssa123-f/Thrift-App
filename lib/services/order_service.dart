@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:thrift_app/models/order_model.dart';
 import 'api_client.dart';
 
 class OrderService {
@@ -66,4 +67,15 @@ class OrderService {
       );
     }
   }
+  static Future<OrderModel> getOrderById(int orderId) async {
+  try {
+    final response = await dio.get('/orders/$orderId');
+
+    return OrderModel.fromJson(response.data['order']);
+  } on DioException catch (e) {
+    throw Exception(
+      e.response?.data['message'] ?? 'Failed to fetch order',
+    );
+  }
+}
 }

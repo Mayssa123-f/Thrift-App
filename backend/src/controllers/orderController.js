@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import db from "../config/db.js";
-
+import { sendPushNotification } from "../utils/sendNotifications.js";
+import { createNotification } from "../utils/createNotification.js";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // POST /api/orders/payment-intent — create Stripe PaymentIntent
@@ -20,7 +21,7 @@ export const createPaymentIntent = async (req, res) => {
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
        WHERE ci.buyer_id = ?`,
-      [buyerId]
+      [buyerId],
     );
 
     if (cartItems.length === 0) {
@@ -36,7 +37,7 @@ export const createPaymentIntent = async (req, res) => {
 
     const subtotal = cartItems.reduce(
       (sum, item) => sum + parseFloat(item.price) * item.quantity,
-      0
+      0,
     );
     const shipping = 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
@@ -72,9 +73,8 @@ export const createOrder = async (req, res) => {
 
     // Verify payment with Stripe
     if (payment_intent_id) {
-      const paymentIntent = await stripe.paymentIntents.retrieve(
-        payment_intent_id
-      );
+      const paymentIntent =
+        await stripe.paymentIntents.retrieve(payment_intent_id);
 
       if (paymentIntent.status !== "succeeded") {
         return res.status(400).json({
@@ -96,7 +96,7 @@ export const createOrder = async (req, res) => {
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
        WHERE ci.buyer_id = ?`,
-      [buyerId]
+      [buyerId],
     );
 
     if (cartItems.length === 0) {
@@ -112,7 +112,7 @@ export const createOrder = async (req, res) => {
 
     const subtotal = cartItems.reduce(
       (sum, item) => sum + parseFloat(item.price) * item.quantity,
-      0
+      0,
     );
     const shipping = 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
@@ -134,21 +134,39 @@ export const createOrder = async (req, res) => {
           item.price,
           item.price,
           delivery_method || "delivery",
-        ]
+        ],
       );
 
       createdOrders.push(result.insertId);
+      // CREATE SELLER NOTIFICATION
+      await createNotification({
+        userId: item.seller_id,
+        actorId: buyerId,
+        type: "order",
+        title: "Your item was sold",
+        body: `${item.title} was purchased successfully`,
+        productId: item.product_id,
+        orderId: result.insertId,
+      });
 
-      await db.query(
-        "UPDATE products SET is_available = FALSE WHERE id = ?",
-        [item.product_id]
-      );
+      // SEND PUSH NOTIFICATION
+      await sendPushNotification({
+        userId: item.seller_id,
+        title: "Your item was sold",
+        body: `${item.title} was purchased successfully`,
+        data: {
+          type: "order",
+          order_id: result.insertId.toString(),
+          product_id: item.product_id.toString(),
+        },
+      });
+
+      await db.query("UPDATE products SET is_available = FALSE WHERE id = ?", [
+        item.product_id,
+      ]);
     }
 
-    await db.query(
-      "DELETE FROM cart_items WHERE buyer_id = ?",
-      [buyerId]
-    );
+    await db.query("DELETE FROM cart_items WHERE buyer_id = ?", [buyerId]);
 
     res.status(201).json({
       message: "Order placed successfully",
@@ -196,7 +214,7 @@ export const getMyOrders = async (req, res) => {
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE o.buyer_id = ?
        ORDER BY o.created_at DESC`,
-      [buyerId, buyerId]
+      [buyerId, buyerId],
     );
 
     res.json({
@@ -236,7 +254,7 @@ export const getSellerOrders = async (req, res) => {
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE o.seller_id = ?
        ORDER BY o.created_at DESC`,
-      [sellerId]
+      [sellerId],
     );
 
     // FIXED: correct variable + correct alias
@@ -245,7 +263,7 @@ export const getSellerOrders = async (req, res) => {
        FROM orders
        WHERE seller_id = ?
        AND status IN ('accepted', 'completed')`,
-      [sellerId]
+      [sellerId],
     );
 
     return res.json({
@@ -254,7 +272,6 @@ export const getSellerOrders = async (req, res) => {
       total_earnings: Number(earningsResult?.[0]?.total_earnings || 0),
       orders,
     });
-
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Server error" });
@@ -269,7 +286,11 @@ export const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     const validStatuses = [
-      "pending", "accepted", "rejected", "completed", "cancelled",
+      "pending",
+      "accepted",
+      "rejected",
+      "completed",
+      "cancelled",
     ];
 
     if (!validStatuses.includes(status)) {
@@ -278,7 +299,7 @@ export const updateOrderStatus = async (req, res) => {
 
     const [orders] = await db.query(
       "SELECT * FROM orders WHERE id = ? AND seller_id = ?",
-      [orderId, sellerId]
+      [orderId, sellerId],
     );
 
     if (orders.length === 0) {
@@ -287,16 +308,15 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    await db.query(
-      "UPDATE orders SET status = ? WHERE id = ?",
-      [status, orderId]
-    );
+    await db.query("UPDATE orders SET status = ? WHERE id = ?", [
+      status,
+      orderId,
+    ]);
 
     if (status === "rejected" || status === "cancelled") {
-      await db.query(
-        "UPDATE products SET is_available = TRUE WHERE id = ?",
-        [orders[0].product_id]
-      );
+      await db.query("UPDATE products SET is_available = TRUE WHERE id = ?", [
+        orders[0].product_id,
+      ]);
     }
 
     res.json({ message: `Order marked as ${status}` });
@@ -316,7 +336,7 @@ export const getWallet = async (req, res) => {
        FROM orders
        WHERE seller_id = ?
        AND status IN ('accepted', 'completed')`,
-      [userId]
+      [userId],
     );
 
     // ================== SPENT ==================
@@ -325,7 +345,7 @@ export const getWallet = async (req, res) => {
        FROM orders
        WHERE buyer_id = ?
        AND status NOT IN ('cancelled', 'rejected')`,
-      [userId]
+      [userId],
     );
 
     // ================== FIXED TRANSACTIONS QUERY ==================
@@ -350,7 +370,7 @@ export const getWallet = async (req, res) => {
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE o.seller_id = ? OR o.buyer_id = ?
        ORDER BY o.created_at DESC`,
-      [userId, userId, userId, userId]
+      [userId, userId, userId, userId],
     );
 
     const totalEarned = Number(earned?.[0]?.total || 0);
@@ -364,9 +384,83 @@ export const getWallet = async (req, res) => {
       total_spent: totalSpent,
       transactions,
     });
-
   } catch (error) {
     console.log("getWallet error:", error);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+// GET /api/orders/:orderId
+export const getOrderById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { orderId } = req.params;
+
+    const [orders] = await db.query(
+      `
+      SELECT
+        o.id,
+        o.status,
+        o.total_price,
+        o.original_price,
+        o.final_price,
+        o.delivery_method,
+        o.created_at,
+        o.buyer_id,
+        o.seller_id,
+
+        p.id AS product_id,
+        p.title,
+        p.price,
+        p.size,
+        p.condition_type,
+        p.gender,
+        p.brand,
+        p.color,
+
+        pi.image_url AS image,
+
+        buyer.full_name AS buyer_name,
+        buyer.profile_image_url AS buyer_image,
+
+        seller.full_name AS seller_name,
+        seller.profile_image_url AS seller_image,
+
+        CASE
+          WHEN o.seller_id = ? THEN 'seller'
+          WHEN o.buyer_id = ? THEN 'buyer'
+          ELSE 'unknown'
+        END AS viewer_role
+
+      FROM orders o
+      JOIN products p ON o.product_id = p.id
+
+      LEFT JOIN product_images pi
+        ON p.id = pi.product_id AND pi.is_primary = TRUE
+
+      JOIN users buyer
+        ON o.buyer_id = buyer.id
+
+      JOIN users seller
+        ON o.seller_id = seller.id
+
+      WHERE o.id = ?
+      AND (o.buyer_id = ? OR o.seller_id = ?)
+      LIMIT 1
+      `,
+      [userId, userId, orderId, userId, userId],
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    res.json({
+      order: orders[0],
+    });
+  } catch (error) {
+    console.log("getOrderById error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
