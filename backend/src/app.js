@@ -12,7 +12,7 @@ import offerRoutes from "./routes/offerRoutes.js";
 
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
-
+import aiStylist from "./routes/ai_stylist.js";
 const app = express();
 
 app.use(cors());
@@ -32,5 +32,5 @@ app.use("/api/offers", offerRoutes);
 
 app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
-
+app.use('/api/ai', aiStylist);
 export default app;
