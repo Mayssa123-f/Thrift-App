@@ -17,11 +17,23 @@ export const createPaymentIntent = async (req, res) => {
         p.price,
         p.seller_id,
         p.is_available,
-        p.title
+        p.title,
+
+        ao.id AS accepted_offer_id,
+        ao.offered_price AS accepted_offer_price
+
        FROM cart_items ci
-       JOIN products p ON ci.product_id = p.id
+
+       JOIN products p 
+        ON ci.product_id = p.id
+
+       LEFT JOIN offers ao
+        ON ao.product_id = p.id
+        AND ao.buyer_id = ?
+        AND ao.status = 'accepted'
+
        WHERE ci.buyer_id = ?`,
-      [buyerId],
+      [buyerId, buyerId],
     );
 
     if (cartItems.length === 0) {
@@ -29,21 +41,25 @@ export const createPaymentIntent = async (req, res) => {
     }
 
     const unavailable = cartItems.filter((item) => !item.is_available);
+
     if (unavailable.length > 0) {
       return res.status(400).json({
         message: `"${unavailable[0].title}" is no longer available`,
       });
     }
 
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + parseFloat(item.price) * item.quantity,
-      0,
-    );
+    const subtotal = cartItems.reduce((sum, item) => {
+      const finalPrice = item.accepted_offer_price
+        ? parseFloat(item.accepted_offer_price)
+        : parseFloat(item.price);
+
+      return sum + finalPrice * item.quantity;
+    }, 0);
+
     const shipping = 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
     const total = parseFloat((subtotal + shipping + tax).toFixed(2));
 
-    // Stripe amount is in cents
     const amountInCents = Math.round(total * 100);
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -71,7 +87,6 @@ export const createOrder = async (req, res) => {
     const buyerId = req.user.id;
     const { delivery_method, payment_intent_id } = req.body;
 
-    // Verify payment with Stripe
     if (payment_intent_id) {
       const paymentIntent =
         await stripe.paymentIntents.retrieve(payment_intent_id);
@@ -89,14 +104,27 @@ export const createOrder = async (req, res) => {
         ci.product_id,
         ci.quantity,
         ci.selected_size,
+
         p.price,
         p.seller_id,
         p.is_available,
-        p.title
+        p.title,
+
+        ao.id AS accepted_offer_id,
+        ao.offered_price AS accepted_offer_price
+
        FROM cart_items ci
-       JOIN products p ON ci.product_id = p.id
+
+       JOIN products p 
+        ON ci.product_id = p.id
+
+       LEFT JOIN offers ao
+        ON ao.product_id = p.id
+        AND ao.buyer_id = ?
+        AND ao.status = 'accepted'
+
        WHERE ci.buyer_id = ?`,
-      [buyerId],
+      [buyerId, buyerId],
     );
 
     if (cartItems.length === 0) {
@@ -104,66 +132,104 @@ export const createOrder = async (req, res) => {
     }
 
     const unavailable = cartItems.filter((item) => !item.is_available);
+
     if (unavailable.length > 0) {
       return res.status(400).json({
         message: `"${unavailable[0].title}" is no longer available`,
       });
     }
 
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + parseFloat(item.price) * item.quantity,
-      0,
-    );
+    const subtotal = cartItems.reduce((sum, item) => {
+      const finalPrice = item.accepted_offer_price
+        ? parseFloat(item.accepted_offer_price)
+        : parseFloat(item.price);
+
+      return sum + finalPrice * item.quantity;
+    }, 0);
+
     const shipping = 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
     const totalPrice = parseFloat((subtotal + shipping + tax).toFixed(2));
 
     const createdOrders = [];
+    const [buyers] = await db.query(
+      "SELECT full_name FROM users WHERE id = ?",
+      [buyerId],
+    );
+
+    const buyer = buyers[0];
 
     for (const item of cartItems) {
+      const finalPrice = item.accepted_offer_price
+        ? parseFloat(item.accepted_offer_price)
+        : parseFloat(item.price);
+
       const [result] = await db.query(
         `INSERT INTO orders
-          (buyer_id, seller_id, product_id, total_price,
-           original_price, final_price, delivery_method, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'accepted')`,
+          (
+            buyer_id,
+            seller_id,
+            product_id,
+            total_price,
+            offer_id,
+            original_price,
+            final_price,
+            delivery_method,
+            status
+          )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'accepted')`,
         [
           buyerId,
           item.seller_id,
           item.product_id,
           totalPrice,
+          item.accepted_offer_id || null,
           item.price,
-          item.price,
+          finalPrice,
           delivery_method || "delivery",
         ],
       );
 
       createdOrders.push(result.insertId);
-      // CREATE SELLER NOTIFICATION
+
+      const soldBody = `${item.title} was purchased by ${
+        buyer?.full_name || "a buyer"
+      }`;
+
       await createNotification({
         userId: item.seller_id,
         actorId: buyerId,
         type: "order",
         title: "Your item was sold",
-        body: `${item.title} was purchased successfully`,
+        body: soldBody,
         productId: item.product_id,
         orderId: result.insertId,
+        offerId: item.accepted_offer_id || null,
       });
 
-      // SEND PUSH NOTIFICATION
       await sendPushNotification({
         userId: item.seller_id,
         title: "Your item was sold",
-        body: `${item.title} was purchased successfully`,
+        body: soldBody,
         data: {
           type: "order",
           order_id: result.insertId.toString(),
           product_id: item.product_id.toString(),
+          offer_id: item.accepted_offer_id
+            ? item.accepted_offer_id.toString()
+            : "",
         },
       });
 
       await db.query("UPDATE products SET is_available = FALSE WHERE id = ?", [
         item.product_id,
       ]);
+
+      if (item.accepted_offer_id) {
+        await db.query("UPDATE offers SET status = 'used' WHERE id = ?", [
+          item.accepted_offer_id,
+        ]);
+      }
     }
 
     await db.query("DELETE FROM cart_items WHERE buyer_id = ?", [buyerId]);

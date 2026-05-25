@@ -10,18 +10,31 @@ export const getMessages = async (req, res) => {
       `
       SELECT 
         cm.*,
+
         p.title AS product_title,
         p.price AS product_price,
+
         (
           SELECT pi.image_url
           FROM product_images pi
           WHERE pi.product_id = p.id
           AND pi.is_primary = 1
           LIMIT 1
-        ) AS product_image
+        ) AS product_image,
+
+        o.status AS offer_status,
+        o.offered_price AS offered_price
+
       FROM chat_messages cm
-      LEFT JOIN products p ON cm.product_id = p.id
+
+      LEFT JOIN products p 
+        ON cm.product_id = p.id
+
+      LEFT JOIN offers o
+        ON cm.offer_id = o.id
+
       WHERE cm.conversation_id = ?
+
       ORDER BY cm.created_at ASC
       `,
       [conversationId],
@@ -112,7 +125,9 @@ export const sendMessage = async (req, res) => {
 
     await sendPushNotification({
       userId: receiverId,
-      title: `New message from ${message[0].sender_name || "VINTY"}`,
+      // title: `New message from ${message[0].sender_name || "VINTY"}`,
+      // body: message_text,
+      title: message[0].sender_name || "VINTY",
       body: message_text,
       data: {
         type: "message",

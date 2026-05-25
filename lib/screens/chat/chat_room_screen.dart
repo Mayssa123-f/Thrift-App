@@ -9,6 +9,7 @@ import '../../models/chat_message_model.dart';
 import '../../models/conversation_model.dart';
 import '../../models/product_model.dart';
 import '../../services/auth_service.dart';
+import '../../controllers/offer_controller.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final ConversationModel conversation;
@@ -30,6 +31,7 @@ class ChatRoomScreen extends StatefulWidget {
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ChatController chatController = ChatController();
+  final OfferController offerController = OfferController();
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
@@ -38,13 +40,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool isLoading = true;
   bool isSending = false;
   List<ChatMessageModel> messages = [];
+  int? get currentUserId => AuthService.currentUser?.id;
+
+  bool get isSeller => currentUserId == widget.conversation.sellerId;
 
   @override
   void initState() {
     super.initState();
     NotificationService.setActiveConversation(widget.conversation.id);
     _loadMessages();
-  
 
     refreshTimer = Timer.periodic(
       const Duration(seconds: 2),
@@ -220,55 +224,172 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     // OFFER MESSAGE
     if (message.messageType == 'offer') {
+      final bool isSeller =
+          AuthService.currentUser?.id == widget.conversation.sellerId;
+
+      final status = message.offerStatus ?? 'pending';
+
+      Color backgroundColor;
+      Color textColor;
+
+      switch (status) {
+        case 'accepted':
+          backgroundColor = const Color(0xFFE8F7EE);
+          textColor = Colors.green.shade700;
+          break;
+
+        case 'declined':
+          backgroundColor = const Color(0xFFFFECEC);
+          textColor = Colors.red.shade700;
+          break;
+
+        default:
+          backgroundColor = Colors.grey.shade100;
+          textColor = Colors.black;
+      }
+
       return Align(
         alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          width: 260,
+          width: 285,
           margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3ECFF),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(20),
-              topRight: const Radius.circular(20),
-              bottomLeft: Radius.circular(isMine ? 20 : 6),
-              bottomRight: Radius.circular(isMine ? 6 : 20),
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: status == 'accepted'
+                  ? Colors.green.shade100
+                  : status == 'declined'
+                  ? Colors.red.shade100
+                  : Colors.grey.shade200,
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Offer",
-                style: GoogleFonts.syne(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                children: [
+                  Icon(Icons.local_offer_outlined, size: 16, color: textColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Offer",
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                    ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 8),
-
+              const SizedBox(height: 12),
               Text(
-                message.messageText ?? "",
+                message.productTitle ?? 'Item',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+              Text(
+                "\$${message.offeredPrice ?? ''}",
+                style: GoogleFonts.inter(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
                   color: Colors.black,
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
-              Text(
-                "Waiting for response",
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.black45),
-              ),
+              if (status == 'accepted')
+                Text(
+                  "Offer accepted",
+                  style: GoogleFonts.inter(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                )
+              else if (status == 'declined')
+                Text(
+                  "Offer declined",
+                  style: GoogleFonts.inter(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                )
+              else if (isSeller && message.offerId != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await offerController.acceptOffer(message.offerId!);
+
+                          _loadMessages();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          "Accept",
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          await offerController.declineOffer(message.offerId!);
+
+                          _loadMessages();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          "Decline",
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  "Waiting for seller response",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
             ],
           ),
         ),
       );
     }
-
     // PRODUCT MESSAGE
     if (message.messageType == 'product') {
       return Align(
@@ -331,6 +452,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
                   const Spacer(),
 
+                  if (!isSeller && message.productId != null)
+                    GestureDetector(
+                      onTap: () {
+                        _showOfferBottomSheet(
+                          productId: message.productId!,
+                          productTitle: message.productTitle ?? "this item",
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          "Make Offer",
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(width: 8),
+
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -382,6 +533,148 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showOfferBottomSheet({
+    required int productId,
+    required String productTitle,
+  }) async {
+    final controller = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Make an Offer",
+                style: GoogleFonts.syne(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                "Suggest your price for $productTitle",
+                style: GoogleFonts.inter(color: Colors.black54, fontSize: 14),
+              ),
+
+              const SizedBox(height: 24),
+
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                style: GoogleFonts.inter(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: InputDecoration(
+                  prefixText: "\$ ",
+                  prefixStyle: GoogleFonts.inter(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                  hintText: "0",
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black26,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final value = double.tryParse(controller.text.trim());
+
+                    if (value == null || value <= 0) {
+                      return;
+                    }
+
+                    try {
+                      await offerController.createOffer(
+                        conversationId: widget.conversation.id,
+                        productId: productId,
+                        sellerId: widget.conversation.sellerId!,
+                        offeredPrice: value,
+                      );
+
+                      if (!mounted) return;
+
+                      Navigator.pop(context);
+
+                      _loadMessages();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Offer sent successfully"),
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e.toString().replaceFirst('Exception: ', ''),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Text(
+                    "Send Offer",
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -460,11 +753,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.local_offer_outlined),
-                  ),
-
                   Expanded(
                     child: TextField(
                       controller: messageController,
