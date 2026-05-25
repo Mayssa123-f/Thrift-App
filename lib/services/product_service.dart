@@ -27,9 +27,7 @@ class ProductService {
 
       return products.map((json) => ProductModel.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to load products',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to load products');
     }
   }
 
@@ -39,9 +37,7 @@ class ProductService {
 
       return ProductModel.fromJson(response.data['product']);
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to load product',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to load product');
     }
   }
 
@@ -54,6 +50,9 @@ class ProductService {
     required String conditionType,
     required String gender,
     required String styleTag,
+    required String brand,
+    required String color,
+
     required List<File> images,
   }) async {
     try {
@@ -68,11 +67,12 @@ class ProductService {
         MapEntry('condition_type', conditionType),
         MapEntry('gender', gender),
         MapEntry('style_tag', styleTag),
+        MapEntry('brand', brand),
+        MapEntry('color', color),
+    
       ]);
 
-      for (int i = 0; i < images.length; i++) {
-        final file = images[i];
-
+      for (final file in images) {
         formData.files.add(
           MapEntry(
             'images',
@@ -87,9 +87,7 @@ class ProductService {
       final response = await dio.post(
         '/products',
         data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       return ProductModel.fromJson(response.data['product']);

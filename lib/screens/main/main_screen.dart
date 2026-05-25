@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
+import 'package:thrift_app/controllers/notification_controller.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
+import 'package:thrift_app/services/notification_service.dart';
 
 import '../../services/cart_service.dart';
 import '../cart/cart_screen.dart';
@@ -23,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
   bool isSearching = false;
   int cartCount = 0;
+  int notificationCount = 0;
 
   final TextEditingController searchController = TextEditingController();
 
@@ -42,6 +45,18 @@ class _MainScreenState extends State<MainScreen> {
     } catch (_) {}
   }
 
+  Future<void> _loadNotificationCount() async {
+    try {
+      final count = await NotificationController().getUnreadCount();
+
+      if (!mounted) return;
+
+      setState(() {
+        notificationCount = count;
+      });
+    } catch (_) {}
+  }
+
   late List<Widget> pages;
 
   @override
@@ -49,6 +64,10 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _buildPages();
     _loadCartCount();
+    _loadNotificationCount();
+    NotificationService.onNotificationReceived = () {
+      _loadNotificationCount();
+    };
   }
 
   void _buildPages() {
@@ -109,9 +128,10 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+    NotificationService.onNotificationReceived = null;
   }
 
-  @override
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,34 +141,32 @@ class _MainScreenState extends State<MainScreen> {
 
       body: IndexedStack(index: currentIndex, children: pages),
 
-  floatingActionButton: FloatingActionButton.extended(
-    backgroundColor: Colors.black,
-    elevation: 3,
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ConversationsScreen(),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.black,
+        elevation: 3,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+          );
+        },
+        icon: const Icon(
+          Icons.chat_bubble_outline_rounded,
+          color: Colors.white,
         ),
-      );
-    },
-    icon: const Icon(
-      Icons.chat_bubble_outline_rounded,
-      color: Colors.white,
-    ),
-    label: Text(
-      "Messages",
-      style: GoogleFonts.syne(
-        color: Colors.white,
-        fontWeight: FontWeight.w700,
+        label: Text(
+          "Messages",
+          style: GoogleFonts.syne(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
-    ),
-  ),
 
-  floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-  bottomNavigationBar: _buildBottomNav(),
-);
+      bottomNavigationBar: _buildBottomNav(),
+    );
   }
 
   AppBar _buildAppBar() {
@@ -176,14 +194,58 @@ class _MainScreenState extends State<MainScreen> {
           },
         ),
         _buildCartButton(),
+        _buildNotificationButton(),
+        const SizedBox(width: 5),
+      ],
+    );
+  }
+
+  Widget _buildNotificationButton() {
+    final count = notificationCount;
+
+    return Stack(
+      children: [
         IconButton(
-          onPressed: openNotifications,
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            );
+
+            _loadNotificationCount();
+          },
           icon: const Icon(
             Icons.notifications_none_rounded,
             color: Colors.black,
           ),
         ),
-        const SizedBox(width: 5),
+
+        if (count > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+
+              child: Center(
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

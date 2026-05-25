@@ -7,6 +7,7 @@ import {
   googleLogin,
   forgotPassword,
   resetPassword,
+  
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
