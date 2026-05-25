@@ -18,11 +18,13 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+
   Stripe.publishableKey =
       'pk_test_51SYN6qE1McKnxFJ4dxJLzOfbO4MAao7AOjzQ4OuRmQMBQkPvQuR6P4fBK8u1eSZMREWIfZPZMG6C3xyphsKt2Jai00ppiVlomu';
 
   await Stripe.instance.applySettings();
-  WidgetsFlutterBinding.ensureInitialized();
+
+
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
