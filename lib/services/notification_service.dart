@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -122,14 +123,22 @@ class NotificationService {
   }
 
   Future<void> saveFcmToken() async {
-    final token = await FirebaseMessaging.instance.getToken();
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
 
-    if (token == null) return;
+      if (token == null || token.isEmpty) return;
 
-    await dio.post(
-      '/notifications/token',
-      data: {'token': token, 'platform': 'android'},
-    );
+      await dio.post(
+        '/notifications/token',
+        data: {'token': token, 'platform': 'android'},
+      );
+    } on DioException catch (e) {
+      debugPrint(
+        'Skipping FCM token sync: ${e.response?.statusCode ?? e.type}',
+      );
+    } catch (e) {
+      debugPrint('Skipping FCM token sync: $e');
+    }
   }
 
   Future<List<NotificationModel>> getNotifications() async {
