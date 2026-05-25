@@ -78,7 +78,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (!mounted) return;
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profile updated successfully")),
@@ -160,7 +160,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         leadingWidth: 90,
         leading: TextButton(
-          onPressed: isSaving ? null : () => Navigator.pop(context),
+          onPressed: isSaving ? null : () => Navigator.pop(context, false),
           child: Text("Cancel", style: GoogleFonts.inter(color: Colors.black)),
         ),
         title: Text(

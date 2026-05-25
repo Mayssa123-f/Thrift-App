@@ -22,9 +22,6 @@ class ProductController {
     return await _productService.getProductById(id);
   }
 
-  // =========================
-  // FIXED: CREATE PRODUCT
-  // =========================
   Future<ProductModel> createProduct({
     required String title,
     required String description,
@@ -34,7 +31,10 @@ class ProductController {
     required String conditionType,
     required String gender,
     required String styleTag,
-    required List<File> images, // 👈 CHANGED HERE
+    required String brand,
+    required String color,
+   
+    required List<File> images,
   }) async {
     return await _productService.createProduct(
       title: title,
@@ -45,11 +45,48 @@ class ProductController {
       conditionType: conditionType,
       gender: gender,
       styleTag: styleTag,
+      brand: brand,
+      color: color,
+  
       images: images,
     );
   }
 
   Future<List<ProductModel>> getMyListings() async {
     return await _productService.getMyListings();
+  }
+
+  // =========================
+  // UPDATE
+  // =========================
+  Future<ProductModel> updateProduct({
+    required int productId,
+    required String title,
+    required String description,
+    required double price,
+    required String category,
+    required String size,
+    required String conditionType,
+    required String gender,
+    required String styleTag,
+  }) async {
+    return await _productService.updateProduct(
+      productId: productId,
+      title: title,
+      description: description,
+      price: price,
+      category: category,
+      size: size,
+      conditionType: conditionType,
+      gender: gender,
+      styleTag: styleTag,
+    );
+  }
+
+  // =========================
+  // DELETE
+  // =========================
+  Future<void> deleteProduct(int productId) async {
+    return await _productService.deleteProduct(productId);
   }
 }

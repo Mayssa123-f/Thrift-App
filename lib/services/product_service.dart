@@ -27,9 +27,7 @@ class ProductService {
 
       return products.map((json) => ProductModel.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to load products',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to load products');
     }
   }
 
@@ -39,15 +37,10 @@ class ProductService {
 
       return ProductModel.fromJson(response.data['product']);
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to load product',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to load product');
     }
   }
 
-  // =========================
-  // FIXED CREATE PRODUCT
-  // =========================
   Future<ProductModel> createProduct({
     required String title,
     required String description,
@@ -57,12 +50,14 @@ class ProductService {
     required String conditionType,
     required String gender,
     required String styleTag,
-    required List<File> images, // 👈 CHANGED (was List<String>)
+    required String brand,
+    required String color,
+
+    required List<File> images,
   }) async {
     try {
       final formData = FormData();
 
-      // TEXT FIELDS
       formData.fields.addAll([
         MapEntry('title', title),
         MapEntry('description', description),
@@ -72,12 +67,12 @@ class ProductService {
         MapEntry('condition_type', conditionType),
         MapEntry('gender', gender),
         MapEntry('style_tag', styleTag),
+        MapEntry('brand', brand),
+        MapEntry('color', color),
+    
       ]);
 
-      // IMAGES (multipart)
-      for (int i = 0; i < images.length; i++) {
-        final file = images[i];
-
+      for (final file in images) {
         formData.files.add(
           MapEntry(
             'images',
@@ -92,9 +87,7 @@ class ProductService {
       final response = await dio.post(
         '/products',
         data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       return ProductModel.fromJson(response.data['product']);
@@ -115,6 +108,56 @@ class ProductService {
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to load your listings',
+      );
+    }
+  }
+
+  // =========================
+  // UPDATE PRODUCT
+  // =========================
+  Future<ProductModel> updateProduct({
+    required int productId,
+    required String title,
+    required String description,
+    required double price,
+    required String category,
+    required String size,
+    required String conditionType,
+    required String gender,
+    required String styleTag,
+  }) async {
+    try {
+      final response = await dio.put(
+        '/products/$productId',
+        data: {
+          'title': title,
+          'description': description,
+          'price': price,
+          'category': category,
+          'size': size,
+          'condition_type': conditionType,
+          'gender': gender,
+          'style_tag': styleTag,
+        },
+      );
+
+      return ProductModel.fromJson(response.data['product']);
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to update product',
+      );
+    }
+  }
+
+  // =========================
+  // DELETE PRODUCT
+  // =========================
+  Future<void> deleteProduct(int productId) async {
+    try {
+      await dio.delete('/products/$productId');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to delete product',
       );
     }
   }

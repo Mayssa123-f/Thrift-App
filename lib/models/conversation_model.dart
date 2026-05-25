@@ -12,7 +12,9 @@ class ConversationModel {
   final String? receiverImage;
 
   final String? lastMessage;
-  
+
+  final DateTime? lastMessageAt;
+  final int unreadCount;
 
   ConversationModel({
     required this.id,
@@ -25,7 +27,8 @@ class ConversationModel {
     this.receiverName,
     this.receiverImage,
     this.lastMessage,
-
+    this.lastMessageAt,
+    required this.unreadCount,
   });
 
   factory ConversationModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +46,12 @@ class ConversationModel {
       receiverImage: json['receiver_image'],
 
       lastMessage: json['last_message'],
+
+      lastMessageAt: json['last_message_at'] != null
+          ? DateTime.parse(json['last_message_at']).toLocal()
+          : null,
+
+      unreadCount: json['unread_count'] ?? 0,
     );
   }
 }

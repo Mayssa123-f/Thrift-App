@@ -6,6 +6,7 @@ import {
   getSellerOrders,
   updateOrderStatus,
   getWallet,
+  getOrderById,
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -18,6 +19,7 @@ router.post("/", createOrder);
 router.get("/", getMyOrders);
 router.get("/seller", getSellerOrders);
 router.get("/wallet", getWallet);
+router.get("/:orderId", getOrderById);
 router.put("/:orderId/status", updateOrderStatus);
 
 export default router;

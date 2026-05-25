@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/screens/mylisting/my_listing_screen.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/controllers/product_controller.dart';
+import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/favorites_service.dart';
 import '../../constants/app_colors.dart';
 import '../../data/app_data.dart';
@@ -174,6 +175,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _loadAccountCounts();
                     },
                   ),
+                  _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                    );
+                  }),
                   const SizedBox(height: 20),
                   _sectionLabel('SETTINGS'),
                   const SizedBox(height: 12),
@@ -181,13 +188,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.person_outline_rounded,
                     'Edit Profile',
                     '',
-                    () {
-                      Navigator.push(
+                    () async {
+                      final updated = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const EditProfileScreen(),
                         ),
                       );
+
+                      if (updated == true) {
+                        await _loadUser();
+                        await _loadAccountCounts();
+                      }
                     },
                   ),
                   _menuItem(
@@ -274,13 +286,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final updated = await Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const EditProfileScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
             );
+
+            if (updated == true) {
+              await _loadUser();
+              await _loadAccountCounts();
+            }
           },
           child: Container(
             padding: const EdgeInsets.all(10),
