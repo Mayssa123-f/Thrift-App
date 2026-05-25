@@ -77,58 +77,108 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 crossAxisSpacing: 15,
                 childAspectRatio: 0.65,
               ),
-              itemBuilder: (context, index) {
-                final product = favorites[index];
+        itemBuilder: (context, index) {
+          final product = favorites[index];
 
-                return GestureDetector(
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailsScreen(product: product),
-                      ),
-                    );
+          return GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailsScreen(product: product),
+                ),
+              );
 
-                    /// 🔥 refresh after coming back
-                    _loadFavorites();
-                  },
+              _loadFavorites();
+            },
+
+            child: Stack(
+              children: [
+                // PRODUCT CARD
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                    image: product.image != null
+                        ? DecorationImage(
+                      image: NetworkImage(product.image!),
+                      fit: BoxFit.cover,
+                    )
+                        : null,
+                  ),
                   child: Container(
+                    alignment: Alignment.bottomCenter,
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
-                      image: product.image != null
-                          ? DecorationImage(
-                              image: NetworkImage(product.image!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: Container(
-                      alignment: Alignment.bottomCenter,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.6),
-                          ],
-                        ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.65),
+                        ],
                       ),
-                      child: Text(
-                        product.title,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.syne(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                    ),
+                    child: Text(
+                      product.title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.syne(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+
+                // ❤️ FAVORITE BUTTON
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: GestureDetector(
+                    onTap: () async {
+                      try {
+                        await FavoritesService.removeFavorite(product.id);
+
+                        setState(() {
+                          favorites.removeAt(index);
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "${product.title} removed from wishlist",
+                            ),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Failed to remove favorite"),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.72),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.favorite,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
             ),
     );
   }
