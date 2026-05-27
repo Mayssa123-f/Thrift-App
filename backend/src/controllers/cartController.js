@@ -43,10 +43,16 @@ export const getCartItems = async (req, res) => {
   JOIN products p 
     ON ci.product_id = p.id
 
-  LEFT JOIN offers ao
-    ON ao.product_id = p.id
-    AND ao.buyer_id = ?
-    AND ao.status = 'accepted'
+ LEFT JOIN offers ao
+  ON ao.id = (
+    SELECT o2.id
+    FROM offers o2
+    WHERE o2.product_id = p.id
+    AND o2.buyer_id = ?
+    AND o2.status = 'accepted'
+  ORDER BY o2.created_at DESC
+    LIMIT 1
+  )
 
   LEFT JOIN categories c 
     ON p.category_id = c.id

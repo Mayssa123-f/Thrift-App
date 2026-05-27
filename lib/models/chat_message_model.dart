@@ -14,6 +14,9 @@ class ChatMessageModel {
   final String? offerStatus;
   final dynamic offeredPrice;
 
+  // ADD THIS
+  final String? imageUrl;
+
   ChatMessageModel({
     required this.id,
     required this.conversationId,
@@ -28,6 +31,9 @@ class ChatMessageModel {
     this.productPrice,
     this.offerStatus,
     this.offeredPrice,
+
+    // ADD THIS
+    this.imageUrl,
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +52,9 @@ class ChatMessageModel {
       productPrice: json['product_price'],
       offerStatus: json['offer_status'],
       offeredPrice: json['offered_price'],
+
+      // ADD THIS
+      imageUrl: json['image_url'],
     );
   }
 }

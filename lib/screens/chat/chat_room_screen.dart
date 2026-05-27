@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:thrift_app/controllers/product_controller.dart';
+import 'package:thrift_app/screens/product/product_details_screen.dart';
 import 'package:thrift_app/services/notification_service.dart';
 
 import '../../controllers/chat_controller.dart';
@@ -34,7 +38,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final OfferController offerController = OfferController();
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
-
+  final ProductController productController = ProductController();
   Timer? refreshTimer;
 
   bool isLoading = true;
@@ -243,6 +247,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           textColor = Colors.red.shade700;
           break;
 
+        case 'expired':
+          backgroundColor = Colors.grey.shade100;
+          textColor = Colors.grey.shade600;
+          break;
         default:
           backgroundColor = Colors.grey.shade100;
           textColor = Colors.black;
@@ -482,21 +490,50 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
                   const SizedBox(width: 8),
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Text(
-                      "View Item",
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                  GestureDetector(
+                    onTap: () async {
+                      try {
+                        final product = await productController.getProductById(
+                          message.productId!,
+                        );
+
+                        if (!mounted) return;
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProductDetailsScreen(product: product),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              e.toString().replaceFirst('Exception: ', ''),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        "View Item",
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -507,7 +544,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
       );
     }
-
+    if (message.messageType == 'image') {
+      return Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          constraints: const BoxConstraints(maxWidth: 190),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.network(
+              'http://10.0.2.2:8080${message.imageUrl}',
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    }
     // NORMAL TEXT MESSAGE
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -678,6 +730,130 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
+  void _showAttachmentSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _attachmentOption(
+                  icon: Icons.camera_alt_rounded,
+                  title: "Take Photo",
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openCamera();
+                  },
+                ),
+
+                const SizedBox(height: 14),
+
+                _attachmentOption(
+                  icon: Icons.photo_library_rounded,
+                  title: "Choose from Gallery",
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openGallery();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _attachmentOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.black),
+
+            const SizedBox(width: 14),
+
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _openCamera() async {
+    final XFile? photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+
+    if (photo != null) {
+      _sendImageMessage(File(photo.path));
+    }
+  }
+
+  Future<void> _openGallery() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (image != null) {
+      _sendImageMessage(File(image.path));
+    }
+  }
+
+  Future<void> _sendImageMessage(File imageFile) async {
+    setState(() => isSending = true);
+
+    try {
+      final newMessage = await chatController.sendImageMessage(
+        conversationId: widget.conversation.id,
+        imageFile: imageFile,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        messages.add(newMessage);
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => isSending = false);
+    }
+  }
+
   @override
   void dispose() {
     NotificationService.setActiveConversation(null);
@@ -745,39 +921,50 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
           SafeArea(
             top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.grey.shade100)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: messageController,
-                      decoration: InputDecoration(
-                        hintText: "Type a message...",
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(22),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 0, 0),
+                  child: GestureDetector(
+                    onTap: _showAttachmentSheet,
+                    child: Container(
+                      height: 44,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add_rounded, color: Colors.black),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: TextField(
+                    controller: messageController,
+                    decoration: InputDecoration(
+                      hintText: "Type a message...",
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
                       ),
                     ),
                   ),
+                ),
 
-                  IconButton(
-                    onPressed: isSending ? null : _sendMessage,
-                    icon: const Icon(Icons.send_rounded),
-                  ),
-                ],
-              ),
+                IconButton(
+                  onPressed: isSending ? null : _sendMessage,
+                  icon: const Icon(Icons.send_rounded),
+                ),
+              ],
             ),
           ),
         ],

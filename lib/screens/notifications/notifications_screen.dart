@@ -292,6 +292,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           );
         }
+        _loadNotifications();
       },
 
       child: Container(

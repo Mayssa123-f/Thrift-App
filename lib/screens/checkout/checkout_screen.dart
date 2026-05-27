@@ -3,6 +3,8 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/models/cart_item_model.dart';
+import 'package:thrift_app/screens/home/home_screen.dart';
+import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/order_service.dart';
 import '../../constants/app_colors.dart';
 
@@ -75,12 +77,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (!mounted) return;
         _showSuccessSheet(
           result['total_price']?.toString() ?? total.toStringAsFixed(2),
+          orderIds: List<int>.from(result['order_ids'] ?? []),
         );
         return;
       }
 
       // Step 1 — create PaymentIntent on backend
-      final intentData = await OrderService.createPaymentIntent();
+      final intentData = await OrderService.createPaymentIntent(
+        deliveryMethod: _selectedDelivery,
+      );
       final clientSecret = intentData['clientSecret'];
 
       // Step 2 — init Stripe payment sheet
@@ -121,85 +126,213 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccessSheet(String paidTotal) {
+  void _showSuccessSheet(String paidTotal, {List<int>? orderIds}) {
+    final orderId = orderIds != null && orderIds.isNotEmpty
+        ? orderIds.first
+        : null;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.55,
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 46,
+              height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                size: 52,
-                color: Colors.black,
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(30),
               ),
             ),
+
             const SizedBox(height: 24),
+
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF8EC),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF57C45B),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 42,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
             Text(
-              'ORDER PLACED!',
+              'Order Placed!',
               style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Your unique finds are on their way.',
-              style: GoogleFonts.inter(
-                color: Colors.grey.shade500,
-                fontSize: 14,
-              ),
-            ),
+
             const SizedBox(height: 8),
+
             Text(
-              'Total charged: \$$paidTotal',
-              style: GoogleFonts.syne(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+              'Thank you! Your order has been placed successfully.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 40),
+
+            const SizedBox(height: 22),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _successInfoRow(
+                    Icons.calendar_month_outlined,
+                    'Order Date',
+                    DateTime.now().toString().split(' ')[0],
+                  ),
+
+                  Divider(color: Colors.grey.shade100),
+
+                  _successInfoRow(
+                    Icons.shopping_bag_outlined,
+                    'Items',
+                    '${items.length} items',
+                  ),
+
+                  Divider(color: Colors.grey.shade100),
+
+                  _successInfoRow(
+                    Icons.sell_outlined,
+                    'Total Paid',
+                    '\$$paidTotal',
+                    isBold: true,
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context); 
+                  Navigator.pop(context); 
+                  Navigator.pop(context); 
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                  );
+                },
+                child: Text(
+                  'View Orders',
+                  style: GoogleFonts.syne(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
             GestureDetector(
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pop(context);
                 Navigator.pop(context);
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 36,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'BACK TO SHOPPING',
-                  style: GoogleFonts.syne(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 1,
-                  ),
+              child: Text(
+                'Back to Shopping',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _successInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isBold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.black54, size: 22),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                color: Colors.black54,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+
+          Text(
+            value,
+            style: GoogleFonts.sora(
+              fontSize: 15,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              color: isBold ? Colors.green.shade700 : Colors.black,
+            ),
+          ),
+        ],
       ),
     );
   }

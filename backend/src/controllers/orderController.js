@@ -8,6 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const createPaymentIntent = async (req, res) => {
   try {
     const buyerId = req.user.id;
+    const { delivery_method } = req.body;
 
     const [cartItems] = await db.query(
       `SELECT
@@ -27,10 +28,16 @@ export const createPaymentIntent = async (req, res) => {
        JOIN products p 
         ON ci.product_id = p.id
 
-       LEFT JOIN offers ao
-        ON ao.product_id = p.id
-        AND ao.buyer_id = ?
-        AND ao.status = 'accepted'
+      LEFT JOIN offers ao
+  ON ao.id = (
+    SELECT o2.id
+    FROM offers o2
+    WHERE o2.product_id = p.id
+    AND o2.buyer_id = ?
+    AND o2.status = 'accepted'
+  ORDER BY o2.created_at DESC
+    LIMIT 1
+  )
 
        WHERE ci.buyer_id = ?`,
       [buyerId, buyerId],
@@ -56,7 +63,7 @@ export const createPaymentIntent = async (req, res) => {
       return sum + finalPrice * item.quantity;
     }, 0);
 
-    const shipping = 8.0;
+    const shipping = delivery_method === "pickup" ? 0 : 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
     const total = parseFloat((subtotal + shipping + tax).toFixed(2));
 
@@ -118,10 +125,16 @@ export const createOrder = async (req, res) => {
        JOIN products p 
         ON ci.product_id = p.id
 
-       LEFT JOIN offers ao
-        ON ao.product_id = p.id
-        AND ao.buyer_id = ?
-        AND ao.status = 'accepted'
+      LEFT JOIN offers ao
+  ON ao.id = (
+    SELECT o2.id
+    FROM offers o2
+    WHERE o2.product_id = p.id
+    AND o2.buyer_id = ?
+    AND o2.status = 'accepted'
+ ORDER BY o2.created_at DESC
+    LIMIT 1
+  )
 
        WHERE ci.buyer_id = ?`,
       [buyerId, buyerId],
@@ -147,7 +160,7 @@ export const createOrder = async (req, res) => {
       return sum + finalPrice * item.quantity;
     }, 0);
 
-    const shipping = 8.0;
+    const shipping = delivery_method === "pickup" ? 0 : 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
     const totalPrice = parseFloat((subtotal + shipping + tax).toFixed(2));
 
@@ -234,6 +247,32 @@ export const createOrder = async (req, res) => {
 
     await db.query("DELETE FROM cart_items WHERE buyer_id = ?", [buyerId]);
 
+    await transporter.sendMail({
+      from: `"Vinty Orders" <${process.env.EMAIL_USER}>`,
+      to: buyer.email,
+      subject: "Your Vinty order is confirmed",
+      html: `
+    <div style="font-family: Arial; padding: 24px; color: #111;">
+      <h2>Order Confirmed ✅</h2>
+
+      <p>Hi ${buyer.full_name},</p>
+
+      <p>Your order has been placed successfully.</p>
+
+      <div style="margin: 20px 0; padding: 16px; border: 1px solid #eee; border-radius: 12px;">
+        <p><strong>Items:</strong> ${cartItems.length}</p>
+        <p><strong>Total paid:</strong> $${totalPrice}</p>
+        <p><strong>Delivery method:</strong> ${delivery_method || "delivery"}</p>
+      </div>
+
+      <p>You can view your order details inside the Vinty app.</p>
+
+      <br/>
+
+      <p>— Vinty Team</p>
+    </div>
+  `,
+    });
     res.status(201).json({
       message: "Order placed successfully",
       order_ids: createdOrders,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
+import 'package:thrift_app/controllers/chat_controller.dart';
 import 'package:thrift_app/controllers/notification_controller.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
 import 'package:thrift_app/services/notification_service.dart';
@@ -25,11 +26,24 @@ class _MainScreenState extends State<MainScreen> {
   bool isSearching = false;
   int cartCount = 0;
   int notificationCount = 0;
+  int unreadMessagesCount = 0;
 
   final TextEditingController searchController = TextEditingController();
 
   Future<void> refreshCartCount() async {
     await _loadCartCount();
+  }
+
+  Future<void> _loadUnreadMessagesCount() async {
+    try {
+      final count = await ChatController().getUnreadMessagesCount();
+
+      if (!mounted) return;
+
+      setState(() {
+        unreadMessagesCount = count;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadCartCount() async {
@@ -66,7 +80,9 @@ class _MainScreenState extends State<MainScreen> {
     _loadNotificationCount();
     NotificationService.onNotificationReceived = () {
       _loadNotificationCount();
+      _loadUnreadMessagesCount();
     };
+    _loadUnreadMessagesCount();
   }
 
   void _buildPages() {
@@ -100,6 +116,7 @@ class _MainScreenState extends State<MainScreen> {
       if (result['changed'] == true) {
         _loadCartCount();
       }
+      
 
       if (result['goHome'] == true) {
         setState(() {
@@ -139,21 +156,41 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: _buildBottomNav(),
 
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.black,
-        elevation: 3,
-        onPressed: openMessages,
-        icon: const Icon(
-          Icons.chat_bubble_outline_rounded,
-          color: Colors.white,
-        ),
-        label: Text(
-          "Messages",
-          style: GoogleFonts.syne(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
+      floatingActionButton: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          FloatingActionButton(
+            backgroundColor: Colors.black,
+            elevation: 3,
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+              );
+
+              _loadUnreadMessagesCount();
+            },
+            child: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: Colors.white,
+            ),
           ),
-        ),
+
+          if (unreadMessagesCount > 0)
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+        ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );

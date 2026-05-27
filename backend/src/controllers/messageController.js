@@ -217,3 +217,91 @@ export const sendProductMessage = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+export const sendImageMessage = async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { conversation_id } = req.body;
+
+    if (!conversation_id) {
+      return res.status(400).json({
+        message: "Conversation ID is required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Image is required",
+      });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    const [result] = await db.query(
+      `
+      INSERT INTO chat_messages
+      (
+        conversation_id,
+        sender_id,
+        message_type,
+        message_text,
+        image_url,
+        created_at,
+        is_read
+      )
+      VALUES (?, ?, 'image', NULL, ?, NOW(), 0)
+      `,
+      [conversation_id, senderId, imageUrl],
+    );
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        cm.*,
+        sender.full_name AS sender_name
+      FROM chat_messages cm
+      LEFT JOIN users sender
+        ON cm.sender_id = sender.id
+      WHERE cm.id = ?
+      `,
+      [result.insertId],
+    );
+
+    const [conversationRows] = await db.query(
+      `
+      SELECT buyer_id, seller_id
+      FROM conversations
+      WHERE id = ?
+      `,
+      [conversation_id],
+    );
+
+    const conversation = conversationRows[0];
+
+    const receiverId =
+      senderId === conversation.buyer_id
+        ? conversation.seller_id
+        : conversation.buyer_id;
+
+    await sendPushNotification({
+      userId: receiverId,
+      title: rows[0].sender_name || "VINTY",
+      body: "Sent you a photo",
+      data: {
+        type: "message",
+        conversation_id: String(conversation_id),
+        sender_id: String(senderId),
+        message_id: String(result.insertId),
+      },
+    });
+
+    return res.status(201).json({
+      message: rows[0],
+    });
+  } catch (error) {
+    console.error("Send image message error:", error);
+
+    return res.status(500).json({
+      message: "Failed to send image message",
+    });
+  }
+};

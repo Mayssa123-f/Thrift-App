@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../models/conversation_model.dart';
 import '../models/chat_message_model.dart';
 import '../services/chat_service.dart';
@@ -25,6 +27,26 @@ class ChatController {
 
   Future<List<ChatMessageModel>> getMessages(int conversationId) {
     return _chatService.getMessages(conversationId);
+  }
+
+  Future<int> getUnreadMessagesCount() async {
+    return await _chatService.getUnreadMessagesCount();
+  }
+
+  Future<ChatMessageModel> sendImageMessage({
+    required int conversationId,
+    required File imageFile,
+  }) async {
+    try {
+      final data = await _chatService.sendImageMessage(
+        conversationId: conversationId,
+        imageFile: imageFile,
+      );
+
+      return ChatMessageModel.fromJson(data['message']);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   // NORMAL TEXT MESSAGE

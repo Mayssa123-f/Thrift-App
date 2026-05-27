@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
@@ -14,6 +16,24 @@ class ChatService {
         .toList();
   }
 
+  Future<Map<String, dynamic>> sendImageMessage({
+    required int conversationId,
+    required File imageFile,
+  }) async {
+    final formData = FormData.fromMap({
+      'conversation_id': conversationId.toString(),
+      'image': await MultipartFile.fromFile(imageFile.path),
+    });
+
+    final response = await dio.post(
+      '/messages/image',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+
+    return response.data;
+  }
+
   Future<ConversationModel> getConversationById(int conversationId) async {
     try {
       final response = await dio.get('/conversations/$conversationId');
@@ -24,6 +44,11 @@ class ChatService {
         e.response?.data['message'] ?? 'Failed to load conversation',
       );
     }
+  }
+
+  Future<int> getUnreadMessagesCount() async {
+    final response = await dio.get('/conversations/unread/count');
+    return response.data['unread_count'] ?? 0;
   }
 
   Future<void> markConversationAsRead(int conversationId) async {
