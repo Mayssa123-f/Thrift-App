@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:thrift_app/models/product_model.dart';
 
 import '../../controllers/product_controller.dart';
 
 class MultiStepSellScreen extends StatefulWidget {
-  const MultiStepSellScreen({super.key});
+  final ProductModel? productToEdit;
+
+  const MultiStepSellScreen({super.key, this.productToEdit});
 
   @override
   State<MultiStepSellScreen> createState() => _MultiStepSellScreenState();
@@ -24,7 +27,7 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
   final int _totalSteps = 4;
 
   bool _isPublishing = false;
-
+  bool get _isEditMode => widget.productToEdit != null;
   // TEXT CONTROLLERS
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -77,6 +80,32 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
     'Old Money',
     'Y2K',
   ];
+  @override
+  void initState() {
+    super.initState();
+
+    final product = widget.productToEdit;
+
+    if (product != null) {
+      _titleController.text = product.title;
+      _priceController.text = product.price.toString();
+      _descController.text = product.description;
+      _brandController.text = product.brand ?? '';
+
+      _selectedCategory = product.category ?? 'Jackets';
+      _selectedCondition = product.conditionType ?? 'good';
+      _selectedGender = product.gender ?? 'unisex';
+      _selectedStyle = product.styleTag ?? 'Vintage';
+      _selectedColorName = product.color ?? 'Black';
+
+      if (_selectedCategory == 'Shoes' || _selectedCategory == 'Sneakers') {
+        _shoeSizeController.text = product.size ?? '';
+      } else {
+        _selectedSize = product.size ?? 'M';
+      }
+    }
+  }
+
   bool get _isShoeCategory {
     return _selectedCategory == 'Shoes' || _selectedCategory == 'Sneakers';
   }
@@ -102,7 +131,7 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
   bool get _canContinue {
     switch (_currentStep) {
       case 0:
-        return _images.isNotEmpty;
+        return _isEditMode || _images.isNotEmpty;
 
       case 1:
         return _isTitleValid && _isPriceValid;
@@ -244,9 +273,10 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
       return _showSnack('Please enter a valid price');
     }
 
-    if (_images.isEmpty) {
+    if (!_isEditMode && _images.isEmpty) {
       return _showSnack('Add at least one photo');
     }
+
     if (_isShoeCategory) {
       final shoeSize = int.tryParse(_shoeSizeController.text.trim());
 
@@ -258,24 +288,45 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
         return _showSnack('EU shoe size must be between 20 and 48');
       }
     }
+
     setState(() => _isPublishing = true);
 
     try {
-      await _productController.createProduct(
-        title: title,
-        description: _descController.text.trim().isEmpty
-            ? 'A unique thrifted piece in great condition.'
-            : _descController.text.trim(),
-        price: double.parse(price),
-        category: _selectedCategory,
-        size: _isShoeCategory ? _shoeSizeController.text.trim() : _selectedSize,
-        conditionType: _selectedCondition,
-        gender: _selectedGender,
-        styleTag: _selectedStyle,
-        brand: _brandController.text.trim(),
-        color: _selectedColorName,
-        images: _images,
-      );
+      if (_isEditMode) {
+        await _productController.updateProduct(
+          productId: widget.productToEdit!.id,
+          title: title,
+          description: _descController.text.trim().isEmpty
+              ? 'A unique thrifted piece in great condition.'
+              : _descController.text.trim(),
+          price: double.parse(price),
+          category: _selectedCategory,
+          size: _isShoeCategory
+              ? _shoeSizeController.text.trim()
+              : _selectedSize,
+          conditionType: _selectedCondition,
+          gender: _selectedGender,
+          styleTag: _selectedStyle,
+        );
+      } else {
+        await _productController.createProduct(
+          title: title,
+          description: _descController.text.trim().isEmpty
+              ? 'A unique thrifted piece in great condition.'
+              : _descController.text.trim(),
+          price: double.parse(price),
+          category: _selectedCategory,
+          size: _isShoeCategory
+              ? _shoeSizeController.text.trim()
+              : _selectedSize,
+          conditionType: _selectedCondition,
+          gender: _selectedGender,
+          styleTag: _selectedStyle,
+          brand: _brandController.text.trim(),
+          color: _selectedColorName,
+          images: _images,
+        );
+      }
 
       if (!mounted) return;
 
@@ -314,7 +365,9 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
         ),
         centerTitle: true,
         title: Text(
-          'STEP ${_currentStep + 1} OF $_totalSteps',
+          _isEditMode
+              ? 'EDIT LISTING'
+              : 'STEP ${_currentStep + 1} OF $_totalSteps',
           style: GoogleFonts.syne(
             fontSize: 11,
             fontWeight: FontWeight.w800,
@@ -389,7 +442,7 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         _currentStep == _totalSteps - 1
-                            ? 'PUBLISH LISTING'
+                            ? (_isEditMode ? 'SAVE CHANGES' : 'PUBLISH LISTING')
                             : 'CONTINUE',
                         style: GoogleFonts.syne(
                           color: Colors.white,
@@ -1121,105 +1174,6 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
     );
   }
 
-  Widget _modernDropdown({
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(
-            item,
-            style: GoogleFonts.inter(fontWeight: FontWeight.w500),
-          ),
-        );
-      }).toList(),
-      onChanged: onChanged,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(22),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _chipSelector({
-    required List<String> values,
-    required String selected,
-    required Function(String) onSelected,
-  }) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: values.map((item) {
-        final isSelected = item == selected;
-
-        return GestureDetector(
-          onTap: () => onSelected(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Text(
-              item.replaceAll('_', ' ').toUpperCase(),
-              style: GoogleFonts.syne(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _uploadButton({
-    required String title,
-    required IconData icon,
-    required bool dark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 72,
-        decoration: BoxDecoration(
-          color: dark ? Colors.black : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: dark ? Colors.white : Colors.black),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: GoogleFonts.syne(
-                fontWeight: FontWeight.w700,
-                color: dark ? Colors.white : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _tipCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1256,20 +1210,6 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
           const SizedBox(width: 10),
           Text(text, style: GoogleFonts.inter(color: Colors.black87)),
         ],
-      ),
-    );
-  }
-
-  Widget _reviewTag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        text.replaceAll('_', ' ').toUpperCase(),
-        style: GoogleFonts.syne(fontSize: 10, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -1334,56 +1274,6 @@ class _MultiStepSellScreenState extends State<MultiStepSellScreen> {
     );
   }
 
-  // Widget _colorSelector() {
-  //   final colors = <Map<String, dynamic>>[
-  //     {'name': 'Black', 'value': Colors.black},
-  //     {'name': 'White', 'value': Colors.white},
-  //     {'name': 'Grey', 'value': const Color(0xFF9E9E9E)},
-  //     {'name': 'Brown', 'value': const Color(0xFF8B6B4A)},
-  //     {'name': 'Beige', 'value': const Color(0xFFD8C7A7)},
-  //     {'name': 'Navy', 'value': const Color(0xFF152744)},
-  //     {'name': 'Green', 'value': const Color(0xFF244C3A)},
-  //   ];
-
-  //   return Row(
-  //     children: colors.map((colorData) {
-  //       final String name = colorData['name'];
-  //       final Color color = colorData['value'];
-  //       final bool isSelected = _colorController.text == name;
-
-  //       return GestureDetector(
-  //         onTap: () {
-  //           setState(() {
-  //             _colorController.text = name;
-  //           });
-  //         },
-  //         child: AnimatedContainer(
-  //           duration: const Duration(milliseconds: 180),
-  //           margin: const EdgeInsets.only(right: 12),
-  //           width: 30,
-  //           height: 30,
-  //           decoration: BoxDecoration(
-  //             color: color,
-  //             shape: BoxShape.circle,
-  //             border: Border.all(
-  //               color: isSelected ? Colors.black : Colors.grey.shade300,
-  //               width: isSelected ? 2 : 1,
-  //             ),
-  //           ),
-  //           child: isSelected
-  //               ? Icon(
-  //                   Icons.check_rounded,
-  //                   size: 17,
-  //                   color: name == 'White' || name == 'Beige'
-  //                       ? Colors.black
-  //                       : Colors.white,
-  //                 )
-  //               : null,
-  //         ),
-  //       );
-  //     }).toList(),
-  //   );
-  // }
   Widget _colorSelector() {
     return Wrap(
       spacing: 12,

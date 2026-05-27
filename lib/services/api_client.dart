@@ -2,31 +2,31 @@ import 'package:dio/dio.dart';
 import '../utils/token_storage.dart';
 
 class ApiClient {
-  static final Dio dio = Dio(
-    BaseOptions(
-      baseUrl: 'http://10.0.2.2:8080/api',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    ),
-  )..interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await TokenStorage.getToken();
+  static final Dio dio =
+      Dio(
+          BaseOptions(
+            baseUrl: 'http://10.0.2.2:8080/api',
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+            headers: {'Content-Type': 'application/json'},
+          ),
+        )
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              final token = await TokenStorage.getToken();
 
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
+              if (token != null) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
 
-          handler.next(options);
-        },
+              handler.next(options);
+            },
 
-        onError: (error, handler) {
-          print('Dio Error: ${error.response?.data}');
-          handler.next(error);
-        },
-      ),
-    );
+            onError: (error, handler) {
+              print('Dio Error: ${error.response?.data}');
+              handler.next(error);
+            },
+          ),
+        );
 }

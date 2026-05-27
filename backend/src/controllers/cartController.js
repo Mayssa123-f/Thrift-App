@@ -7,45 +7,68 @@ export const getCartItems = async (req, res) => {
 
     const [items] = await db.query(
       `
-      SELECT
-        ci.id AS cart_item_id,
-        ci.quantity,
-        ci.selected_size,
-        ci.created_at AS added_at,
+  SELECT
+    ci.id AS cart_item_id,
+    ci.quantity,
+    ci.selected_size,
+    ci.created_at AS added_at,
 
-        p.id AS id,
-        p.title,
-        p.description,
-        p.price,
-        p.currency,
-        p.brand,
-        p.size,
-        p.condition_type,
-        p.gender,
-        p.location,
-        p.style_tag,
-        p.color,
-        p.is_available,
+    p.id AS id,
+    p.title,
+    p.description,
+    p.price,
+    p.currency,
+    p.brand,
+    p.size,
+    p.condition_type,
+    p.gender,
+    p.location,
+    p.style_tag,
+    p.color,
+    p.is_available,
 
-        c.name AS category,
+    ao.id AS accepted_offer_id,
+    ao.offered_price AS accepted_offer_price,
 
-        u.id AS seller_id,
-        u.full_name AS seller,
-        u.profile_image_url AS seller_image,
+    c.name AS category,
 
-        pi.image_url AS image
+    u.id AS seller_id,
+    u.full_name AS seller,
+    u.profile_image_url AS seller_image,
 
-      FROM cart_items ci
-      JOIN products p ON ci.product_id = p.id
-      LEFT JOIN categories c ON p.category_id = c.id
-      JOIN users u ON p.seller_id = u.id
-      LEFT JOIN product_images pi
-        ON p.id = pi.product_id AND pi.is_primary = TRUE
+    pi.image_url AS image
 
-      WHERE ci.buyer_id = ?
-      ORDER BY ci.created_at DESC
-      `,
-      [buyerId],
+  FROM cart_items ci
+
+  JOIN products p 
+    ON ci.product_id = p.id
+
+ LEFT JOIN offers ao
+  ON ao.id = (
+    SELECT o2.id
+    FROM offers o2
+    WHERE o2.product_id = p.id
+    AND o2.buyer_id = ?
+    AND o2.status = 'accepted'
+  ORDER BY o2.created_at DESC
+    LIMIT 1
+  )
+
+  LEFT JOIN categories c 
+    ON p.category_id = c.id
+
+  JOIN users u 
+    ON p.seller_id = u.id
+
+  LEFT JOIN product_images pi
+    ON p.id = pi.product_id 
+    AND pi.is_primary = TRUE
+
+  WHERE ci.buyer_id = ?
+
+  ORDER BY ci.created_at DESC
+  `,
+      [buyerId, buyerId],
     );
 
     res.json({

@@ -3,6 +3,8 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/models/cart_item_model.dart';
+import 'package:thrift_app/screens/home/home_screen.dart';
+import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/order_service.dart';
 import '../../constants/app_colors.dart';
 
@@ -22,23 +24,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool isPlacingOrder = false;
   List<CartItemModel> items = [];
 
-  double get subtotal =>
-      items.fold(0, (sum, item) => sum + item.totalPrice);
+  double get subtotal => items.fold(0, (sum, item) => sum + item.totalPrice);
   double get shipping =>
       _selectedDelivery == 'pickup' ? 0 : (subtotal > 0 ? 8.00 : 0);
-  double get tax =>
-      double.parse((subtotal * 0.05).toStringAsFixed(2));
+  double get tax => double.parse((subtotal * 0.05).toStringAsFixed(2));
   double get total => subtotal + shipping + tax;
 
   final List<String> _paymentLabels = [
     'Credit / Debit Card',
-    'Apple Pay',
+
     'Cash on Delivery',
   ];
 
   final List<IconData> _paymentIcons = [
     Icons.credit_card_outlined,
-    Icons.phone_iphone_outlined,
+
     Icons.payments_outlined,
   ];
 
@@ -69,20 +69,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       // Cash on delivery — skip Stripe
-      if (_selectedPayment == 2) {
+      if (_selectedPayment == 1) {
         final result = await OrderService.createOrder(
           deliveryMethod: _selectedDelivery,
           paymentIntentId: '',
         );
         if (!mounted) return;
         _showSuccessSheet(
-            result['total_price']?.toString() ??
-                total.toStringAsFixed(2));
+          result['total_price']?.toString() ?? total.toStringAsFixed(2),
+          orderIds: List<int>.from(result['order_ids'] ?? []),
+        );
         return;
       }
 
       // Step 1 — create PaymentIntent on backend
-      final intentData = await OrderService.createPaymentIntent();
+      final intentData = await OrderService.createPaymentIntent(
+        deliveryMethod: _selectedDelivery,
+      );
       final clientSecret = intentData['clientSecret'];
 
       // Step 2 — init Stripe payment sheet
@@ -108,8 +111,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (!mounted) return;
       _showSuccessSheet(
-          result['total_price']?.toString() ??
-              total.toStringAsFixed(2));
+        result['total_price']?.toString() ?? total.toStringAsFixed(2),
+      );
     } on StripeException catch (e) {
       if (!mounted) return;
       if (e.error.code != FailureCode.Canceled) {
@@ -123,70 +126,166 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccessSheet(String paidTotal) {
+  void _showSuccessSheet(String paidTotal, {List<int>? orderIds}) {
+    final orderId = orderIds != null && orderIds.isNotEmpty
+        ? orderIds.first
+        : null;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.55,
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(30)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 46,
+              height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF8EC),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded,
-                  size: 52, color: Colors.black),
+              child: Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF57C45B),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 42,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
+
             Text(
-              'ORDER PLACED!',
+              'Order Placed!',
               style: GoogleFonts.syne(
-                  fontSize: 24, fontWeight: FontWeight.w800),
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Your unique finds are on their way.',
-              style: GoogleFonts.inter(
-                  color: Colors.grey.shade500, fontSize: 14),
-            ),
+
             const SizedBox(height: 8),
+
             Text(
-              'Total charged: \$$paidTotal',
-              style: GoogleFonts.syne(
-                  fontWeight: FontWeight.w700, fontSize: 16),
+              'Thank you! Your order has been placed successfully.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 40),
+
+            const SizedBox(height: 22),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _successInfoRow(
+                    Icons.calendar_month_outlined,
+                    'Order Date',
+                    DateTime.now().toString().split(' ')[0],
+                  ),
+
+                  Divider(color: Colors.grey.shade100),
+
+                  _successInfoRow(
+                    Icons.shopping_bag_outlined,
+                    'Items',
+                    '${items.length} items',
+                  ),
+
+                  Divider(color: Colors.grey.shade100),
+
+                  _successInfoRow(
+                    Icons.sell_outlined,
+                    'Total Paid',
+                    '\$$paidTotal',
+                    isBold: true,
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context); // close success sheet
+                  Navigator.pop(context, {
+                    'orderPlaced': true,
+                    'openOrders': true,
+                  }); // close checkout
+                },
+                child: Text(
+                  'View Orders',
+                  style: GoogleFonts.syne(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
             GestureDetector(
               onTap: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context); // close success sheet
+                Navigator.pop(context, {'orderPlaced': true}); // close checkout
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 36, vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'BACK TO SHOPPING',
-                  style: GoogleFonts.syne(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 1,
-                  ),
+              child: Text(
+                'Back to Shopping',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
                 ),
               ),
             ),
@@ -196,16 +295,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  Widget _successInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isBold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.black54, size: 22),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                color: Colors.black54,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+
+          Text(
+            value,
+            style: GoogleFonts.sora(
+              fontSize: 15,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              color: isBold ? Colors.green.shade700 : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message,
-            style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+        content: Text(
+          message,
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+        ),
         backgroundColor: Colors.black87,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -218,8 +356,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Colors.black, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -238,85 +379,87 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           : items.isEmpty
           ? const Center(child: Text('Your cart is empty'))
           : Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('YOUR ORDER'),
-                  ...items.map(
-                          (item) => _buildOrderItem(item)),
-                  const SizedBox(height: 24),
-                  _sectionTitle('DELIVERY METHOD'),
-                  _buildDeliveryOption(
-                      'delivery',
-                      'Home Delivery',
-                      Icons.local_shipping_outlined,
-                      '\$8.00'),
-                  _buildDeliveryOption('pickup',
-                      'Pickup', Icons.store_outlined, 'Free'),
-                  const SizedBox(height: 24),
-                  _sectionTitle('SHIPPING ADDRESS'),
-                  _buildAddressCard(),
-                  const SizedBox(height: 24),
-                  _sectionTitle('PAYMENT METHOD'),
-                  ...List.generate(
-                    _paymentLabels.length,
-                        (i) => _buildPaymentOption(i,
-                        _paymentLabels[i], _paymentIcons[i]),
-                  ),
-                  const SizedBox(height: 24),
-                  _sectionTitle('ORDER SUMMARY'),
-                  _buildSummaryCard(),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-                20, 16, 20, 40),
-            color: Colors.white,
-            child: SizedBox(
-              width: double.infinity,
-              height: 62,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(20),
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _sectionTitle('YOUR ORDER'),
+                        ...items.map((item) => _buildOrderItem(item)),
+                        const SizedBox(height: 24),
+                        _sectionTitle('DELIVERY METHOD'),
+                        _buildDeliveryOption(
+                          'delivery',
+                          'Home Delivery',
+                          Icons.local_shipping_outlined,
+                          '\$8.00',
+                        ),
+                        _buildDeliveryOption(
+                          'pickup',
+                          'Pickup',
+                          Icons.store_outlined,
+                          'Free',
+                        ),
+                        const SizedBox(height: 24),
+                        _sectionTitle('SHIPPING ADDRESS'),
+                        _buildAddressCard(),
+                        const SizedBox(height: 24),
+                        _sectionTitle('PAYMENT METHOD'),
+                        ...List.generate(
+                          _paymentLabels.length,
+                          (i) => _buildPaymentOption(
+                            i,
+                            _paymentLabels[i],
+                            _paymentIcons[i],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _sectionTitle('ORDER SUMMARY'),
+                        _buildSummaryCard(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-                onPressed: isPlacingOrder
-                    ? null
-                    : _processPayment,
-                child: isPlacingOrder
-                    ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                    : Text(
-                  'CONFIRM & PAY  ·  \$${total.toStringAsFixed(2)}',
-                  style: GoogleFonts.syne(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                  color: Colors.white,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 62,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      onPressed: isPlacingOrder ? null : _processPayment,
+                      child: isPlacingOrder
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'CONFIRM & PAY  ·  \$${total.toStringAsFixed(2)}',
+                              style: GoogleFonts.syne(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -351,25 +494,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.syne(
-                      fontSize: 12, fontWeight: FontWeight.w800),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 2),
-                Text(product.seller,
-                    style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: Colors.grey.shade500)),
+                Text(
+                  product.seller,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
                 if (item.selectedSize != null)
-                  Text('Size: ${item.selectedSize}',
-                      style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: Colors.grey.shade500)),
+                  Text(
+                    'Size: ${item.selectedSize}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
               ],
             ),
           ),
-          Text(
-            '${product.formattedPrice} x${item.quantity}',
-            style: GoogleFonts.syne(
-                fontWeight: FontWeight.w800, fontSize: 13),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (item.hasAcceptedOffer)
+                Text(
+                  product.formattedPrice,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: Colors.black38,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+
+              Text(
+                '\$${item.effectivePrice.toStringAsFixed(2)} x${item.quantity}',
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: item.hasAcceptedOffer
+                      ? Colors.green.shade700
+                      : Colors.black,
+                ),
+              ),
+
+              if (item.hasAcceptedOffer)
+                Text(
+                  'Offer accepted',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -377,49 +558,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildDeliveryOption(
-      String value, String label, IconData icon, String price) {
+    String value,
+    String label,
+    IconData icon,
+    String price,
+  ) {
     final isSelected = _selectedDelivery == value;
     return GestureDetector(
       onTap: () => setState(() => _selectedDelivery = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-            isSelected ? Colors.black : Colors.grey.shade100,
+            color: isSelected ? Colors.black : Colors.grey.shade100,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : Colors.black,
-                size: 22),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.black,
+              size: 22,
+            ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(label,
-                  style: GoogleFonts.syne(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.black)),
+              child: Text(
+                label,
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
             ),
-            Text(price,
-                style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: isSelected
-                        ? Colors.white70
-                        : Colors.black54)),
+            Text(
+              price,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: isSelected ? Colors.white70 : Colors.black54,
+              ),
+            ),
             const SizedBox(width: 8),
             if (isSelected)
-              const Icon(Icons.check_circle_rounded,
-                  color: Colors.white, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -442,23 +632,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               color: Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.location_on_outlined,
-                color: Colors.black, size: 20),
+            child: const Icon(
+              Icons.location_on_outlined,
+              color: Colors.black,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mayssa Faraj',
-                    style: GoogleFonts.syne(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14)),
+                Text(
+                  items.isNotEmpty ? items.first.product.seller : 'Seller',
+                  style: GoogleFonts.syne(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text('Antonine University, Zahle, Bekaa',
-                    style: GoogleFonts.inter(
-                        color: Colors.grey.shade500,
-                        fontSize: 12)),
+                Text(
+                  items.isNotEmpty
+                      ? (items.first.product.location ??
+                            'Seller location not provided')
+                      : 'Seller location not provided',
+
+                  style: GoogleFonts.inter(
+                    color: Colors.grey.shade500,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -468,42 +671,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentOption(
-      int index, String title, IconData icon) {
+  Widget _buildPaymentOption(int index, String title, IconData icon) {
     final isSelected = _selectedPayment == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedPayment = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-            isSelected ? Colors.black : Colors.grey.shade100,
+            color: isSelected ? Colors.black : Colors.grey.shade100,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : Colors.black,
-                size: 22),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.black,
+              size: 22,
+            ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(title,
-                  style: GoogleFonts.syne(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.black)),
+              child: Text(
+                title,
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle_rounded,
-                  color: Colors.white, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -520,14 +726,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       child: Column(
         children: [
-          _summaryRow(
-              'Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
+          _summaryRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 10),
           _summaryRow(
-              'Shipping',
-              _selectedDelivery == 'pickup'
-                  ? 'Free'
-                  : '\$${shipping.toStringAsFixed(2)}'),
+            'Shipping',
+            _selectedDelivery == 'pickup'
+                ? 'Free'
+                : '\$${shipping.toStringAsFixed(2)}',
+          ),
           const SizedBox(height: 10),
           _summaryRow('Tax (5%)', '\$${tax.toStringAsFixed(2)}'),
           const Padding(
@@ -537,12 +743,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total',
-                  style: GoogleFonts.syne(
-                      fontSize: 16, fontWeight: FontWeight.w800)),
-              Text('\$${total.toStringAsFixed(2)}',
-                  style: GoogleFonts.syne(
-                      fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(
+                'Total',
+                style: GoogleFonts.syne(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '\$${total.toStringAsFixed(2)}',
+                style: GoogleFonts.syne(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ],
@@ -569,16 +783,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: GoogleFonts.inter(
-                color: Colors.grey.shade500,
-                fontWeight: FontWeight.w500,
-                fontSize: 13)),
-        Text(value,
-            style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Colors.black)),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            color: Colors.grey.shade500,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: Colors.black,
+          ),
+        ),
       ],
     );
   }

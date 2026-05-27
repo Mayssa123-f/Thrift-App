@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:thrift_app/screens/main/main_screen.dart';
-import 'package:thrift_app/widgets/google_auth_botton.dart';
+
 import '../../constants/app_colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/google_auth_botton.dart';
+import '../main/main_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,245 +18,389 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  bool isObscure = true;
   final AuthController authController = AuthController();
+
+  bool isObscure = true;
   bool isLoading = false;
 
-  // Consistent input decoration helper
-  InputDecoration _inputStyle(String label, {Widget? suffix}) {
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _inputStyle(
+    String hint, {
+    Widget? suffix,
+    Widget? prefix,
+  }) {
     return InputDecoration(
-      labelText: label,
-      labelStyle: GoogleFonts.inter(color: AppColors.darkGray, fontSize: 14),
+      hintText: hint,
+      hintStyle: GoogleFonts.inter(
+        color: Colors.grey.shade500,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.black, width: 1.5),
+        borderSide: const BorderSide(
+          color: Colors.black,
+          width: 1.2,
+        ),
       ),
+      prefixIcon: prefix,
       suffixIcon: suffix,
     );
+  }
+
+  Future<void> _register() async {
+    setState(() => isLoading = true);
+
+    try {
+      await authController.register(
+        nameController.text,
+        emailController.text,
+        passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _googleRegister() async {
+    setState(() => isLoading = true);
+
+    try {
+      await authController.continueWithGoogle();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
 
-              // Back Button for better UX
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+      body: Stack(
+        children: [
+          /// BACKGROUND IMAGE
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/vinty_login_bg.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                30,
+                15,
+                30,
+                24,
               ),
 
-              const SizedBox(height: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
 
-              Text(
-                "Create\nNew Account",
-                style: GoogleFonts.syne(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                  color: AppColors.black,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              Text(
-                "Join the sustainable fashion movement.",
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  color: AppColors.darkGray,
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // NAME FIELD
-              TextField(
-                controller: nameController,
-                style: GoogleFonts.inter(),
-                decoration: _inputStyle("Full Name"),
-              ),
-
-              const SizedBox(height: 16),
-
-              // EMAIL FIELD
-              TextField(
-                controller: emailController,
-                style: GoogleFonts.inter(),
-                decoration: _inputStyle("Email Address"),
-              ),
-
-              const SizedBox(height: 16),
-
-              // PASSWORD FIELD
-              TextField(
-                controller: passwordController,
-                obscureText: isObscure,
-                style: GoogleFonts.inter(),
-                decoration: _inputStyle(
-                  "Password",
-                  suffix: IconButton(
-                    icon: Icon(
-                      isObscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: AppColors.darkGray,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(() => isObscure = !isObscure),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // REGISTER BUTTON
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        AppColors.black, // High-contrast black button
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setState(() => isLoading = true);
-
-                          try {
-                            await authController.register(
-                              nameController.text,
-                              emailController.text,
-                              passwordController.text,
-                            );
-
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Account created successfully"),
-                              ),
-                            );
-
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const MainScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          } catch (e) {
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  e.toString().replaceFirst('Exception: ', ''),
-                                ),
-                              ),
-                            );
-                          } finally {
-                            if (mounted) {
-                              setState(() => isLoading = false);
-                            }
-                          }
-                        },
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          "Create Account",
-                          style: GoogleFonts.syne(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // FOOTER
-              GoogleAuthButton(
-                isLoading: isLoading,
-                onPressed: () async {
-                  setState(() => isLoading = true);
-
-                  try {
-                    await authController.continueWithGoogle();
-
-                    if (!mounted) return;
-
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MainScreen(),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          e.toString().replaceFirst('Exception: ', ''),
-                        ),
-                      ),
-                    );
-                  } finally {
-                    if (mounted) {
-                      setState(() => isLoading = false);
-                    }
-                  }
-                },
-              ),
-
-              const SizedBox(height: 30),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Already have an account?",
-                    style: GoogleFonts.inter(color: AppColors.darkGray),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "Login",
-                      style: GoogleFonts.syne(
-                        color: AppColors.black,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  /// TOP SECTION
+                  _buildBrandHeader(),
+
+                  const SizedBox(height: 135),
+
+                  /// REGISTER CARD
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: _buildRegisterCard(),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrandHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'VINTY',
+          style: GoogleFonts.syne(
+            fontSize: 34,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -2,
+            color: Colors.black,
           ),
         ),
-      ),
+
+        const SizedBox(height: 14),
+
+        Text(
+          'THRIFT IT.\nSTYLE IT.\nLOVE IT.',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            height: 1.8,
+            letterSpacing: 4,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Create New Account',
+          style: GoogleFonts.ibmPlexSerif(
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
+
+        const SizedBox(height: 6),
+
+        Text(
+          'Join the sustainable fashion movement.',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            height: 1.4,
+            color: const Color(0xFF6F6258),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+
+        const SizedBox(height: 22),
+
+        /// NAME
+        TextField(
+          controller: nameController,
+          decoration: _inputStyle(
+            'Full Name',
+            prefix: const Icon(
+              Icons.person_outline_rounded,
+              size: 20,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        /// EMAIL
+        TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: _inputStyle(
+            'Email Address',
+            prefix: const Icon(
+              Icons.mail_outline_rounded,
+              size: 20,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        /// PASSWORD
+        TextField(
+          controller: passwordController,
+          obscureText: isObscure,
+          decoration: _inputStyle(
+            'Password',
+            prefix: const Icon(
+              Icons.lock_outline_rounded,
+              size: 20,
+            ),
+            suffix: IconButton(
+              icon: Icon(
+                isObscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                size: 20,
+              ),
+              onPressed: () {
+                setState(() => isObscure = !isObscure);
+              },
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 26),
+
+        /// CREATE BUTTON
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _register,
+
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Create Account',
+                        style: GoogleFonts.syne(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+
+        const SizedBox(height: 22),
+
+        /// DIVIDER
+        Row(
+          children: [
+            Expanded(
+              child: Divider(color: Colors.grey.shade300),
+            ),
+
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12),
+
+              child: Text(
+                'OR',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF7A604C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+
+            Expanded(
+              child: Divider(color: Colors.grey.shade300),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+
+        /// GOOGLE BUTTON
+        GoogleAuthButton(
+          isLoading: isLoading,
+          onPressed: _googleRegister,
+        ),
+
+        const SizedBox(height: 28),
+
+        /// LOGIN TEXT
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Already have an account?',
+              style: GoogleFonts.inter(
+                color: const Color(0xFF6F6258),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+
+              child: Text(
+                'Sign In',
+                style: GoogleFonts.syne(
+                  color: Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

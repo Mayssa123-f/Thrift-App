@@ -277,7 +277,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           return;
         }
 
-        if (notification.type == 'message' &&
+        if ((notification.type == 'message' || notification.type == 'offer') &&
             notification.conversationId != null) {
           final conversation = await _chatController.getConversationById(
             notification.conversationId!,
@@ -292,6 +292,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           );
         }
+        _loadNotifications();
       },
 
       child: Container(

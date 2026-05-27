@@ -53,4 +53,23 @@ class NotificationModel {
       actorImage: json['actor_image'],
     );
   }
+
+  NotificationModel copyWith({bool? isRead}) {
+    return NotificationModel(
+      id: id,
+      userId: userId,
+      actorId: actorId,
+      type: type,
+      title: title,
+      body: body,
+      conversationId: conversationId,
+      productId: productId,
+      orderId: orderId,
+      offerId: offerId,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
+      actorName: actorName,
+      actorImage: actorImage,
+    );
+  }
 }

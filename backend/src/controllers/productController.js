@@ -162,7 +162,7 @@ export const getMyListings = async (req, res) => {
       WHERE p.seller_id = ?
       ORDER BY p.created_at DESC
       `,
-      [sellerId]
+      [sellerId],
     );
 
     res.json({
@@ -221,7 +221,7 @@ export const createProduct = async (req, res) => {
     // Look up category
     const [categories] = await db.query(
       "SELECT id FROM categories WHERE name = ?",
-      [category]
+      [category],
     );
 
     if (categories.length === 0) {
@@ -251,7 +251,7 @@ export const createProduct = async (req, res) => {
         brand || null,
         color || null,
         location || null,
-      ]
+      ],
     );
 
     const productId = result.insertId;
@@ -261,7 +261,7 @@ export const createProduct = async (req, res) => {
       await db.query(
         `INSERT INTO product_images (product_id, image_url, is_primary)
          VALUES (?, ?, ?)`,
-        [productId, uploadedImages[i], i === 0 ? 1 : 0]
+        [productId, uploadedImages[i], i === 0 ? 1 : 0],
       );
     }
 
@@ -293,7 +293,7 @@ export const createProduct = async (req, res) => {
        LEFT JOIN product_images pi
          ON p.id = pi.product_id AND pi.is_primary = TRUE
        WHERE p.id = ?`,
-      [productId]
+      [productId],
     );
 
     res.status(201).json({
@@ -324,7 +324,7 @@ export const updateProduct = async (req, res) => {
 
     const [products] = await db.query(
       `SELECT * FROM products WHERE id = ? AND seller_id = ?`,
-      [id, sellerId]
+      [id, sellerId],
     );
 
     if (products.length === 0) {
@@ -335,7 +335,7 @@ export const updateProduct = async (req, res) => {
 
     const [categories] = await db.query(
       `SELECT id FROM categories WHERE name = ?`,
-      [category]
+      [category],
     );
 
     if (categories.length === 0) {
@@ -368,7 +368,7 @@ export const updateProduct = async (req, res) => {
         gender,
         style_tag,
         id,
-      ]
+      ],
     );
 
     const [updated] = await db.query(
@@ -386,6 +386,7 @@ export const updateProduct = async (req, res) => {
         p.style_tag,
         p.location,
         p.is_available,
+        p.created_at,
 
         c.name AS category,
 
@@ -402,7 +403,7 @@ export const updateProduct = async (req, res) => {
 
       WHERE p.id = ?
       `,
-      [id]
+      [id],
     );
 
     res.json({
@@ -425,7 +426,7 @@ export const deleteProduct = async (req, res) => {
 
     const [products] = await db.query(
       `SELECT * FROM products WHERE id = ? AND seller_id = ?`,
-      [id, sellerId]
+      [id, sellerId],
     );
 
     if (products.length === 0) {
@@ -434,15 +435,9 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    await db.query(
-      `DELETE FROM product_images WHERE product_id = ?`,
-      [id]
-    );
+    await db.query(`DELETE FROM product_images WHERE product_id = ?`, [id]);
 
-    await db.query(
-      `DELETE FROM products WHERE id = ?`,
-      [id]
-    );
+    await db.query(`DELETE FROM products WHERE id = ?`, [id]);
 
     res.json({
       message: "Product deleted successfully",

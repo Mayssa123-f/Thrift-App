@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+// import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thrift_app/firebase_options.dart';
 import 'package:thrift_app/services/notification_service.dart';
@@ -17,15 +18,22 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
   Stripe.publishableKey =
-  'pk_test_51SYN6qE1McKnxFJ4dxJLzOfbO4MAao7AOjzQ4OuRmQMBQkPvQuR6P4fBK8u1eSZMREWIfZPZMG6C3xyphsKt2Jai00ppiVlomu';
+      'pk_test_51SYN6qE1McKnxFJ4dxJLzOfbO4MAao7AOjzQ4OuRmQMBQkPvQuR6P4fBK8u1eSZMREWIfZPZMG6C3xyphsKt2Jai00ppiVlomu';
 
   await Stripe.instance.applySettings();
 
+
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  
   runApp(const VintyApp());
 }
 
@@ -187,7 +195,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen>
                       fontSize: 94,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 15,
-                      height: 10,
+                      height: 1,
                     ),
                   ),
                 ),

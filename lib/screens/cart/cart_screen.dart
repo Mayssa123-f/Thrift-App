@@ -274,14 +274,64 @@ class _CartScreenState extends State<CartScreen> {
 
                 const SizedBox(height: 4),
 
-                Text(
-                  '${product.formattedPrice}  x${item.quantity}',
-                  style: GoogleFonts.syne(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                if (item.hasAcceptedOffer) ...[
+                  const SizedBox(height: 6),
+
+                  Row(
+                    children: [
+                      Text(
+                        product.formattedPrice,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.black38,
+                          decoration: TextDecoration.lineThrough,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'Offer accepted',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    '\$${item.effectivePrice.toStringAsFixed(2)}  x${item.quantity}',
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
+
+                  Text(
+                    '${product.formattedPrice}  x${item.quantity}',
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -343,6 +393,17 @@ class _CartScreenState extends State<CartScreen> {
             width: double.infinity,
             height: 60,
             child: ElevatedButton(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+                );
+
+                if (result != null && result['orderPlaced'] == true) {
+                  Navigator.pop(context, {'orderPlaced': true});
+                }
+              },
+
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 elevation: 0,
@@ -350,12 +411,9 @@ class _CartScreenState extends State<CartScreen> {
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-              ),
+
               child: Text(
-                'CHECKOUT  ·  \$${total.toStringAsFixed(2)}',
+                'CHECKOUT · \$${total.toStringAsFixed(2)}',
                 style: GoogleFonts.syne(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,

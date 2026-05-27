@@ -10,18 +10,31 @@ export const getMessages = async (req, res) => {
       `
       SELECT 
         cm.*,
+
         p.title AS product_title,
         p.price AS product_price,
+
         (
           SELECT pi.image_url
           FROM product_images pi
           WHERE pi.product_id = p.id
           AND pi.is_primary = 1
           LIMIT 1
-        ) AS product_image
+        ) AS product_image,
+
+        o.status AS offer_status,
+        o.offered_price AS offered_price
+
       FROM chat_messages cm
-      LEFT JOIN products p ON cm.product_id = p.id
+
+      LEFT JOIN products p 
+        ON cm.product_id = p.id
+
+      LEFT JOIN offers o
+        ON cm.offer_id = o.id
+
       WHERE cm.conversation_id = ?
+
       ORDER BY cm.created_at ASC
       `,
       [conversationId],
@@ -112,7 +125,9 @@ export const sendMessage = async (req, res) => {
 
     await sendPushNotification({
       userId: receiverId,
-      title: `New message from ${message[0].sender_name || "VINTY"}`,
+      // title: `New message from ${message[0].sender_name || "VINTY"}`,
+      // body: message_text,
+      title: message[0].sender_name || "VINTY",
       body: message_text,
       data: {
         type: "message",
@@ -200,5 +215,93 @@ export const sendProductMessage = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+export const sendImageMessage = async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { conversation_id } = req.body;
+
+    if (!conversation_id) {
+      return res.status(400).json({
+        message: "Conversation ID is required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Image is required",
+      });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    const [result] = await db.query(
+      `
+      INSERT INTO chat_messages
+      (
+        conversation_id,
+        sender_id,
+        message_type,
+        message_text,
+        image_url,
+        created_at,
+        is_read
+      )
+      VALUES (?, ?, 'image', NULL, ?, NOW(), 0)
+      `,
+      [conversation_id, senderId, imageUrl],
+    );
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        cm.*,
+        sender.full_name AS sender_name
+      FROM chat_messages cm
+      LEFT JOIN users sender
+        ON cm.sender_id = sender.id
+      WHERE cm.id = ?
+      `,
+      [result.insertId],
+    );
+
+    const [conversationRows] = await db.query(
+      `
+      SELECT buyer_id, seller_id
+      FROM conversations
+      WHERE id = ?
+      `,
+      [conversation_id],
+    );
+
+    const conversation = conversationRows[0];
+
+    const receiverId =
+      senderId === conversation.buyer_id
+        ? conversation.seller_id
+        : conversation.buyer_id;
+
+    await sendPushNotification({
+      userId: receiverId,
+      title: rows[0].sender_name || "VINTY",
+      body: "Sent you a photo",
+      data: {
+        type: "message",
+        conversation_id: String(conversation_id),
+        sender_id: String(senderId),
+        message_id: String(result.insertId),
+      },
+    });
+
+    return res.status(201).json({
+      message: rows[0],
+    });
+  } catch (error) {
+    console.error("Send image message error:", error);
+
+    return res.status(500).json({
+      message: "Failed to send image message",
+    });
   }
 };
