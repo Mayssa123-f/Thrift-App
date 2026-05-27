@@ -24,6 +24,7 @@ class ProductModel {
 
   final int categoryId;
   final String? color;
+  final DateTime? createdAt;
 
   ProductModel({
     required this.id,
@@ -51,80 +52,62 @@ class ProductModel {
 
     required this.categoryId,
     this.color,
+    this.createdAt,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       // ── Safe int parsing ─────────────────────────────
-      id: int.tryParse(
-            (json['id'] ?? 0).toString(),
-          ) ??
-          0,
+      id: int.tryParse((json['id'] ?? 0).toString()) ?? 0,
 
       // ── Basic info ──────────────────────────────────
       title: json['title']?.toString() ?? '',
 
-      description:
-          json['description']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
 
       // ── Safe double parsing ─────────────────────────
-      price: double.tryParse(
-            (json['price'] ?? 0).toString(),
-          ) ??
-          0.0,
+      price: double.tryParse((json['price'] ?? 0).toString()) ?? 0.0,
 
-      currency:
-          json['currency']?.toString() ?? 'USD',
+      currency: json['currency']?.toString() ?? 'USD',
 
       // ── Optional fields ─────────────────────────────
       brand: json['brand']?.toString(),
 
       size: json['size']?.toString(),
 
-      conditionType:
-          json['condition_type']?.toString(),
+      conditionType: json['condition_type']?.toString(),
 
       gender: json['gender']?.toString(),
 
-      styleTag:
-          json['style_tag']?.toString(),
+      styleTag: json['style_tag']?.toString(),
 
       location: json['location']?.toString(),
 
       category: json['category']?.toString(),
 
       // ── Seller ──────────────────────────────────────
-      sellerId: int.tryParse(
-            (json['seller_id'] ?? 0).toString(),
-          ) ??
-          0,
+      sellerId: int.tryParse((json['seller_id'] ?? 0).toString()) ?? 0,
 
-      seller:
-          json['seller']?.toString() ??
-              'Unknown Seller',
+      seller: json['seller']?.toString() ?? 'Unknown Seller',
 
-      sellerImage:
-          json['seller_image']?.toString(),
+      sellerImage: json['seller_image']?.toString(),
 
       // ── Images ──────────────────────────────────────
       image: json['image']?.toString(),
 
-      images: json['images'] != null
-          ? List<String>.from(json['images'])
-          : [],
+      images: json['images'] != null ? List<String>.from(json['images']) : [],
 
       // ── Availability ────────────────────────────────
-      isAvailable:
-          json['is_available'] == 1 ||
-              json['is_available'] == true,
+      isAvailable: json['is_available'] == 1 || json['is_available'] == true,
 
       // ── AI stylist support ──────────────────────────
-      categoryId: int.tryParse(
-            (json['category_id'] ?? 0).toString(),
-          ) ??
-          0,
+      categoryId: int.tryParse((json['category_id'] ?? 0).toString()) ?? 0,
 
       color: json['color']?.toString(),
+
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 

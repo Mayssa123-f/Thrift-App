@@ -393,6 +393,17 @@ class _CartScreenState extends State<CartScreen> {
             width: double.infinity,
             height: 60,
             child: ElevatedButton(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+                );
+
+                if (result != null && result['orderPlaced'] == true) {
+                  Navigator.pop(context, {'orderPlaced': true});
+                }
+              },
+
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 elevation: 0,
@@ -400,12 +411,9 @@ class _CartScreenState extends State<CartScreen> {
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CheckoutScreen()),
-              ),
+
               child: Text(
-                'CHECKOUT  ·  \$${total.toStringAsFixed(2)}',
+                'CHECKOUT · \$${total.toStringAsFixed(2)}',
                 style: GoogleFonts.syne(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,

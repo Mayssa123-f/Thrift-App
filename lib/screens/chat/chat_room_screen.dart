@@ -927,15 +927,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   padding: const EdgeInsets.fromLTRB(8, 0, 0, 0),
                   child: GestureDetector(
                     onTap: _showAttachmentSheet,
-                    child: Container(
-                      height: 44,
-                      width: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.add_rounded, color: Colors.black),
-                    ),
+                    child: const Icon(Icons.add_rounded, color: Colors.black),
                   ),
                 ),
 

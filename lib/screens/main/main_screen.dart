@@ -4,6 +4,7 @@ import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/controllers/chat_controller.dart';
 import 'package:thrift_app/controllers/notification_controller.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
+import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/notification_service.dart';
 
 import '../cart/cart_screen.dart';
@@ -27,6 +28,7 @@ class _MainScreenState extends State<MainScreen> {
   int cartCount = 0;
   int notificationCount = 0;
   int unreadMessagesCount = 0;
+  int refreshVersion = 0;
 
   final TextEditingController searchController = TextEditingController();
 
@@ -88,15 +90,16 @@ class _MainScreenState extends State<MainScreen> {
   void _buildPages() {
     pages = [
       HomeScreen(
+        key: ValueKey('home-$refreshVersion'),
         search: searchController.text,
         onCartUpdated: refreshCartCount,
       ),
 
       SwipeScreen(
+        key: ValueKey('swipe-$refreshVersion'),
         search: searchController.text,
         onCartUpdated: refreshCartCount,
       ),
-
       const SizedBox(),
 
       FavoritesScreen(key: ValueKey(DateTime.now().millisecondsSinceEpoch)),
@@ -112,17 +115,44 @@ class _MainScreenState extends State<MainScreen> {
       MaterialPageRoute(builder: (context) => const CartScreen()),
     );
 
-    if (result != null) {
-      if (result['changed'] == true) {
-        _loadCartCount();
-      }
-      
+    if (!mounted) return;
 
-      if (result['goHome'] == true) {
-        setState(() {
-          currentIndex = 0;
+    if (result != null && result['orderPlaced'] == true) {
+      final bool shouldOpenOrders = result['openOrders'] == true;
+
+      await _loadCartCount();
+
+      if (!mounted) return;
+
+      setState(() {
+        refreshVersion++;
+        _buildPages();
+        currentIndex = 0;
+      });
+
+      if (shouldOpenOrders) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+          );
         });
       }
+
+      return;
+    }
+
+    if (result != null && result['changed'] == true) {
+      await _loadCartCount();
+
+      if (!mounted) return;
+
+      setState(() {
+        refreshVersion++;
+        _buildPages();
+      });
     }
   }
 
@@ -201,29 +231,35 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white.withValues(alpha: 0.9),
       elevation: 0,
       centerTitle: false,
+      titleSpacing: 16,
       title: isSearching ? _buildSearchField() : _buildLogo(),
-      actions: [
-        IconButton(
-          icon: Icon(
-            isSearching ? Icons.close_rounded : Icons.search_rounded,
-            color: Colors.black,
-          ),
-          onPressed: () {
-            setState(() {
-              isSearching = !isSearching;
-
-              if (!isSearching) {
-                searchController.clear();
-              }
-
-              _buildPages();
-            });
-          },
-        ),
-        _buildCartButton(),
-        _buildNotificationButton(),
-        const SizedBox(width: 5),
-      ],
+      actions: isSearching
+          ? [
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.black),
+                onPressed: () {
+                  setState(() {
+                    isSearching = false;
+                    searchController.clear();
+                    _buildPages();
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+            ]
+          : [
+              IconButton(
+                icon: const Icon(Icons.search_rounded, color: Colors.black),
+                onPressed: () {
+                  setState(() {
+                    isSearching = true;
+                  });
+                },
+              ),
+              _buildCartButton(),
+              _buildNotificationButton(),
+              const SizedBox(width: 5),
+            ],
     );
   }
 
@@ -275,28 +311,56 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildSearchField() {
-    return Container(
-      height: 42,
-      constraints: const BoxConstraints(maxWidth: 220),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: searchController,
-        autofocus: true,
-        style: GoogleFonts.inter(fontSize: 14),
-        decoration: const InputDecoration(
-          hintText: "Search items...",
-          prefixIcon: Icon(Icons.search, size: 20, color: Colors.black),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 10),
+    return Expanded(
+      child: Container(
+        height: 40,
+        margin: const EdgeInsets.only(left: 4, right: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
         ),
-        onChanged: (_) {
-          setState(() {
-            _buildPages();
-          });
-        },
+        child: TextField(
+          controller: searchController,
+          autofocus: false,
+          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+          cursorColor: Colors.black,
+          decoration: InputDecoration(
+            hintText: "Search Items",
+            hintStyle: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.black38,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              size: 18,
+              color: Colors.black45,
+            ),
+            suffixIcon: searchController.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      searchController.clear();
+                      setState(() {
+                        _buildPages();
+                      });
+                    },
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 19,
+                      color: Colors.black45,
+                    ),
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          onChanged: (_) {
+            setState(() {
+              _buildPages();
+            });
+          },
+        ),
       ),
     );
   }

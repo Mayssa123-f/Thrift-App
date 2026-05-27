@@ -6,8 +6,7 @@ import 'package:thrift_app/controllers/product_controller.dart';
 import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/favorites_service.dart';
 import '../../constants/app_colors.dart';
-import '../../data/app_data.dart';
-import '../../services/listing_service.dart';
+
 import '../favorites/favorites_screen.dart';
 import '../cart/cart_screen.dart';
 import '../editProfile/edit_profile_screen.dart';
@@ -376,13 +375,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildStatsRow() {
     final stats = isSellerMode
         ? [
-            {'label': 'Listings', 'value': '${ListingService.all.length}'},
+            {'label': 'Listings', 'value': '2'},
             {'label': 'Sales', 'value': '28'},
             {'label': 'Views', 'value': '340'},
           ]
         : [
-            {'label': 'Saved', 'value': '${AppData.favorites.length}'},
-            {'label': 'Cart', 'value': '${AppData.cart.length}'},
+            {'label': 'Saved', 'value': '5'},
+            {'label': 'Cart', 'value': '5'},
             {'label': 'Orders', 'value': '5'},
           ];
 

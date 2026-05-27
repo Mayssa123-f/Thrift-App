@@ -14,6 +14,7 @@ class MyOrdersScreen extends StatefulWidget {
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   bool isLoading = true;
   int selectedTab = 0;
+  final TextEditingController searchController = TextEditingController();
 
   List<dynamic> buyerOrders = [];
   List<dynamic> sellerOrders = [];
@@ -43,7 +44,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   List<dynamic> get currentOrders {
-    return selectedTab == 0 ? buyerOrders : sellerOrders;
+    final orders = selectedTab == 0 ? buyerOrders : sellerOrders;
+
+    final query = searchController.text.trim().toLowerCase();
+
+    if (query.isEmpty) return orders;
+
+    return orders.where((order) {
+      final title = (order['title'] ?? '').toString().toLowerCase();
+
+      final seller = (order['seller'] ?? '').toString().toLowerCase();
+
+      final buyer = (order['buyer'] ?? '').toString().toLowerCase();
+
+      return title.contains(query) ||
+          seller.contains(query) ||
+          buyer.contains(query);
+    }).toList();
   }
 
   @override
@@ -75,7 +92,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           : Column(
               children: [
                 _tabs(),
-
+                _searchField(),
                 Expanded(
                   child: currentOrders.isEmpty
                       ? _emptyState()
@@ -93,6 +110,82 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _searchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: TextField(
+          controller: searchController,
+          onChanged: (_) {
+            setState(() {});
+          },
+          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            hintText: 'Search orders...',
+            hintStyle: GoogleFonts.inter(color: Colors.black38, fontSize: 13),
+
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Colors.black45,
+              size: 20,
+            ),
+
+            suffixIcon: searchController.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      searchController.clear();
+                      setState(() {});
+                    },
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Colors.black45,
+                    ),
+                  )
+                : null,
+
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 54,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search_rounded, color: Colors.black38),
+            const SizedBox(width: 10),
+            Text(
+              "Search your listings",
+              style: GoogleFonts.inter(
+                color: Colors.black38,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

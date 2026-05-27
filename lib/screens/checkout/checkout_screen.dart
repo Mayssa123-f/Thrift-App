@@ -258,14 +258,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pop(context); 
-                  Navigator.pop(context); 
-                  Navigator.pop(context); 
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
-                  );
+                  Navigator.pop(context); // close success sheet
+                  Navigator.pop(context, {
+                    'orderPlaced': true,
+                    'openOrders': true,
+                  }); // close checkout
                 },
                 child: Text(
                   'View Orders',
@@ -281,9 +278,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             GestureDetector(
               onTap: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context); // close success sheet
+                Navigator.pop(context, {'orderPlaced': true}); // close checkout
               },
               child: Text(
                 'Back to Shopping',
