@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoading = true;
   final CartController cartController = CartController();
   final ProductController productController = ProductController();
-
+  int profileTab = 0; // 0 = Dashboard, 1 = Details
   int wishlistCount = 0;
   int cartCount = 0;
   int listingsCount = 0;
@@ -117,125 +117,309 @@ class _ProfileScreenState extends State<ProfileScreen> {
       //     const SizedBox(width: 8),
       //   ],
       // ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  _buildProfileHeader(),
-                  const SizedBox(height: 25),
-                  _buildModeToggle(),
-                  const SizedBox(height: 28),
-                  _buildDashboardLabel(),
-                  const SizedBox(height: 14),
-                  _buildStatsRow(),
-                  const SizedBox(height: 32),
-                  _sectionLabel('ACCOUNT'),
-                  const SizedBox(height: 12),
-                  _menuItem(
-                    Icons.favorite_outline_rounded,
-                    'My Wishlist',
-                    '$wishlistCount items',
-                    () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const FavoritesScreen(),
-                        ),
-                      );
-                      _loadAccountCounts();
-                    },
-                  ),
-                  _menuItem(
-                    Icons.shopping_bag_outlined,
-                    'My Cart',
-                    '$cartCount items',
-                    () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CartScreen()),
-                      );
-                      _loadAccountCounts();
-                    },
-                  ),
-                  _menuItem(
-                    Icons.inventory_2_outlined,
-                    'My Listings',
-                    '$listingsCount active',
-                    () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MyListingsScreen(),
-                        ),
-                      );
-                      _loadAccountCounts();
-                    },
-                  ),
-                  _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
-                    );
-                  }),
-                  const SizedBox(height: 20),
-                  _sectionLabel('SETTINGS'),
-                  const SizedBox(height: 12),
-                  _menuItem(
-                    Icons.person_outline_rounded,
-                    'Edit Profile',
-                    '',
-                    () async {
-                      final updated = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EditProfileScreen(),
-                        ),
-                      );
+     body: isLoading
+    ? const Center(child: CircularProgressIndicator())
+    : SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 12),
+            _buildProfileHeader(),
+            const SizedBox(height: 24),
+            _buildProfileTabs(),
+            const SizedBox(height: 24),
 
-                      if (updated == true) {
-                        await _loadUser();
-                        await _loadAccountCounts();
-                      }
-                    },
-                  ),
-                  _menuItem(
-                    Icons.credit_card_outlined,
-                    'Payments & Payouts',
-                    '',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PaymentsPayoutsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _menuItem(
-                    Icons.help_outline_rounded,
-                    'Help & Support',
-                    '',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const HelpSupportScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 32),
-                  _buildLogoutButton(),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
+            if (profileTab == 0) ...[
+              _buildRevenueCard(),
+              const SizedBox(height: 26),
+              _sectionLabel('SELLER OVERVIEW'),
+              const SizedBox(height: 12),
+              _buildStatsRow(),
+              const SizedBox(height: 28),
+              _sectionLabel('QUICK ACTIONS'),
+              const SizedBox(height: 16),
+              _buildQuickActions(),
+              const SizedBox(height: 28),
+              _buildBoostCard(),
+            ] else ...[
+              _buildAccountDetails(),
+            ],
+          ],
+        ),
+      ),
     );
   }
+  Widget _buildProfileTabs() {
+  return Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      children: [
+        _profileTabButton('Dashboard', 0),
+        _profileTabButton('Details', 1),
+      ],
+    ),
+  );
+}
+
+Widget _profileTabButton(String text, int index) {
+  final active = profileTab == index;
+
+  return Expanded(
+    child: GestureDetector(
+      onTap: () => setState(() => profileTab = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: active ? Colors.black : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: GoogleFonts.syne(
+              color: active ? Colors.white : Colors.black45,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildRevenueCard() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: Colors.black,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Total Revenue',
+          style: GoogleFonts.inter(
+            color: Colors.white70,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '\$2,450.00',
+          style: GoogleFonts.syne(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.18),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '↑ 18% vs last month',
+            style: GoogleFonts.inter(
+              color: Colors.greenAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
+        SizedBox(
+          height: 90,
+          child: CustomPaint(
+            painter: RevenueChartPainter(),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+Widget _buildAccountDetails() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _sectionLabel('ACCOUNT'),
+      const SizedBox(height: 12),
+
+      _menuItem(
+        Icons.favorite_outline_rounded,
+        'My Wishlist',
+        '$wishlistCount items',
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+          );
+          _loadAccountCounts();
+        },
+      ),
+
+      _menuItem(
+        Icons.shopping_bag_outlined,
+        'My Cart',
+        '$cartCount items',
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CartScreen()),
+          );
+          _loadAccountCounts();
+        },
+      ),
+
+      _menuItem(
+        Icons.inventory_2_outlined,
+        'My Listings',
+        '$listingsCount active',
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyListingsScreen()),
+          );
+          _loadAccountCounts();
+        },
+      ),
+
+      _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+        );
+      }),
+
+      const SizedBox(height: 20),
+      _sectionLabel('SETTINGS'),
+      const SizedBox(height: 12),
+
+      _menuItem(Icons.person_outline_rounded, 'Edit Profile', '', () async {
+        final updated = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+        );
+
+        if (updated == true) {
+          await _loadUser();
+          await _loadAccountCounts();
+        }
+      }),
+
+      _menuItem(Icons.credit_card_outlined, 'Payments & Payouts', '', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PaymentsPayoutsScreen()),
+        );
+      }),
+
+      _menuItem(Icons.help_outline_rounded, 'Help & Support', '', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+        );
+      }),
+
+      const SizedBox(height: 28),
+      _buildLogoutButton(),
+    ],
+  );
+}
+Widget _buildQuickActions() {
+  final actions = [
+    [Icons.add_rounded, 'Add Listing'],
+    [Icons.inventory_2_outlined, 'Manage\nListings'],
+    [Icons.insights_rounded, 'Sales\nAnalytics'],
+    [Icons.account_balance_wallet_outlined, 'Payouts'],
+  ];
+
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: actions.map((a) {
+      return Column(
+        children: [
+          Container(
+            height: 58,
+            width: 58,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(a[0] as IconData, color: Colors.black),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            a[1] as String,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }).toList(),
+  );
+}
+
+Widget _buildBoostCard() {
+  return Container(
+    width: double.infinity,
+    height: 150,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF2E7D8),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Boost your listings',
+          style: GoogleFonts.playfairDisplay(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Get more views and sell faster.',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: Colors.black54,
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'Promote Now',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildProfileHeader() {
     return Row(
@@ -522,4 +706,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
+class RevenueChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final dotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final points = [
+      Offset(0, size.height * 0.75),
+      Offset(size.width * 0.18, size.height * 0.45),
+      Offset(size.width * 0.32, size.height * 0.70),
+      Offset(size.width * 0.50, size.height * 0.35),
+      Offset(size.width * 0.68, size.height * 0.58),
+      Offset(size.width * 0.82, size.height * 0.40),
+      Offset(size.width, size.height * 0.12),
+    ];
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+
+    canvas.drawPath(path, paint);
+
+    for (final point in points) {
+      canvas.drawCircle(point, 3.2, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

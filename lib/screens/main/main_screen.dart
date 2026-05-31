@@ -136,26 +136,9 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       extendBody: true,
       appBar: _buildAppBar(),
+
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: _buildBottomNav(),
-
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.black,
-        elevation: 3,
-        onPressed: openMessages,
-        icon: const Icon(
-          Icons.chat_bubble_outline_rounded,
-          color: Colors.white,
-        ),
-        label: Text(
-          "Messages",
-          style: GoogleFonts.syne(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -375,27 +358,26 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
-
-          // Positioned(
-          //   right: 18,
-          //   bottom: bottomInset + 84,
-          //   child: FloatingActionButton.extended(
-          //     backgroundColor: Colors.black,
-          //     elevation: 3,
-          //     onPressed: openMessages,
-          //     icon: const Icon(
-          //       Icons.chat_bubble_outline_rounded,
-          //       color: Colors.white,
-          //     ),
-          //     label: Text(
-          //       "Messages",
-          //       style: GoogleFonts.syne(
-          //         color: Colors.white,
-          //         fontWeight: FontWeight.w700,
-          //       ),
-          //     ),
-          //   ),
-          // ),
+          Positioned(
+            right: 18,
+            bottom: bottomInset + 84,
+            child: FloatingActionButton.extended(
+              backgroundColor: Colors.black,
+              elevation: 3,
+              onPressed: openMessages,
+              icon: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: Colors.white,
+              ),
+              label: Text(
+                "Messages",
+                style: GoogleFonts.syne(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -420,7 +402,7 @@ class _MainScreenState extends State<MainScreen> {
         height: 74,
         child: Icon(
           icon,
-          size: 24,
+          size: 30,
           color: selected ? Colors.black : Colors.grey.shade500,
         ),
       ),
