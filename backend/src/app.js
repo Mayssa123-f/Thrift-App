@@ -16,6 +16,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import aiStylist from "./routes/ai_stylist.js";
+import botRoutes from "./routes/botRoutes.js";
 const app = express();
 
 app.use(cors());
@@ -36,4 +37,5 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
 app.use('/api/ai', aiStylist);
+app.use("/api/bot", botRoutes);
 export default app;
