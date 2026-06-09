@@ -24,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   XFile? _profileImage;
+  String? _profileImageUrl;
   bool isLoading = true;
   bool isSaving = false;
 
@@ -41,6 +42,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _emailController.text = user.email;
       _bioController.text = user.bio ?? "";
       _locationController.text = user.location ?? "";
+      _profileImageUrl = user.profileImageUrl;
     } catch (e) {
       if (!mounted) return;
 
@@ -73,7 +75,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         fullName: _nameController.text,
         bio: _bioController.text,
         location: _locationController.text,
-        profileImageUrl: null,
+        profileImageUrl: _profileImageUrl,
+        profileImage: _profileImage != null ? File(_profileImage!.path) : null,
       );
 
       if (!mounted) return;
@@ -208,8 +211,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           backgroundColor: Colors.grey.shade100,
                           backgroundImage: _profileImage != null
                               ? FileImage(File(_profileImage!.path))
+                              : _profileImageUrl != null &&
+                                    _profileImageUrl!.isNotEmpty
+                              ? NetworkImage(_profileImageUrl!)
                               : null,
-                          child: _profileImage == null
+                          child:
+                              _profileImage == null &&
+                                  (_profileImageUrl == null ||
+                                      _profileImageUrl!.isEmpty)
                               ? const Icon(
                                   Icons.person,
                                   size: 50,

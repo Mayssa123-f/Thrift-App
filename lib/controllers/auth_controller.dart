@@ -1,8 +1,9 @@
+import 'dart:io';
+
 import 'package:thrift_app/services/notification_service.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
-import '../utils/token_storage.dart';
 import '../services/google_auth_service.dart';
 
 class AuthController {
@@ -67,6 +68,7 @@ class AuthController {
     String? bio,
     String? location,
     String? profileImageUrl,
+    File? profileImage,
   }) async {
     if (fullName.trim().isEmpty) {
       throw Exception('Full name is required');
@@ -77,6 +79,7 @@ class AuthController {
       bio: bio,
       location: location,
       profileImageUrl: profileImageUrl,
+      profileImage: profileImage,
     );
   }
 

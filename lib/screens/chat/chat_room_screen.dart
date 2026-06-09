@@ -867,6 +867,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Widget build(BuildContext context) {
     final receiverName =
         widget.receiverName ?? widget.conversation.receiverName ?? "Seller";
+    final receiverImage =
+        widget.receiverImage ?? widget.conversation.receiverImage;
     return Scaffold(
       backgroundColor: Colors.white,
 
@@ -879,12 +881,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundImage: widget.receiverImage != null
-                  ? NetworkImage(widget.receiverImage!)
-                  : widget.conversation.receiverImage != null
-                  ? NetworkImage(widget.conversation.receiverImage!)
+              backgroundImage: receiverImage != null && receiverImage.isNotEmpty
+                  ? NetworkImage(receiverImage)
                   : null,
-              child: widget.receiverImage == null
+              child: receiverImage == null || receiverImage.isEmpty
                   ? const Icon(Icons.person, size: 18)
                   : null,
             ),

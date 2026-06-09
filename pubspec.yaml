@@ -37,6 +37,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   
   image_picker: ^1.0.7
+  video_player: ^2.9.2
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -79,7 +80,9 @@ flutter:
     - assets/google_logo.svg
     - assets/images/
     - assets/vinty.png
-    - assets/transparent.png
+    - assets/transparent.png 
+    - assets/videos/   
+
 
 
   # To add assets to your application, add an assets section, like this:

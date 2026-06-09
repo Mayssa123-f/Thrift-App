@@ -6,6 +6,7 @@ import 'package:thrift_app/controllers/notification_controller.dart';
 import 'package:thrift_app/screens/notifications/notifications_screen.dart';
 import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/notification_service.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../cart/cart_screen.dart';
 import '../chat/conversations_screen.dart';
@@ -183,15 +184,22 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       extendBody: true,
       appBar: _buildAppBar(),
+
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: _buildBottomNav(),
 
-      floatingActionButton: Stack(
+
+
+      floatingActionButton: SizedBox(
+        width: 62,
+        height: 62,
+      child: Stack(
         clipBehavior: Clip.none,
         children: [
           FloatingActionButton(
             backgroundColor: Colors.black,
-            elevation: 3,
+            elevation: 8,
+            shape: const CircleBorder(),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -222,7 +230,9 @@ class _MainScreenState extends State<MainScreen> {
             ),
         ],
       ),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
     );
   }
 
@@ -432,12 +442,12 @@ class _MainScreenState extends State<MainScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _navButton(0, Icons.grid_view_rounded),
+
+                    _navButton(0, CupertinoIcons.square_grid_2x2), 
                     _navButton(1, Icons.style_rounded),
                     const SizedBox(width: 68),
-                    _navButton(3, Icons.favorite_border_rounded),
-                    _navButton(4, Icons.person_outline_rounded),
-                  ],
+                    _navButton(3, CupertinoIcons.heart),
+                    _navButton(4, CupertinoIcons.person),                  ],
                 ),
               ),
             ),
@@ -476,27 +486,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
-
-          // Positioned(
-          //   right: 18,
-          //   bottom: bottomInset + 84,
-          //   child: FloatingActionButton.extended(
-          //     backgroundColor: Colors.black,
-          //     elevation: 3,
-          //     onPressed: openMessages,
-          //     icon: const Icon(
-          //       Icons.chat_bubble_outline_rounded,
-          //       color: Colors.white,
-          //     ),
-          //     label: Text(
-          //       "Messages",
-          //       style: GoogleFonts.syne(
-          //         color: Colors.white,
-          //         fontWeight: FontWeight.w700,
-          //       ),
-          //     ),
-          //   ),
-          // ),
+          
         ],
       ),
     );
@@ -521,7 +511,7 @@ class _MainScreenState extends State<MainScreen> {
         height: 74,
         child: Icon(
           icon,
-          size: 24,
+          size: 30,
           color: selected ? Colors.black : Colors.grey.shade500,
         ),
       ),
