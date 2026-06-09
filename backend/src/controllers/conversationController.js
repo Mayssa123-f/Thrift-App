@@ -193,3 +193,27 @@ export const getConversationById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+export const getUnreadMessagesCount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [rows] = await db.query(
+      `
+      SELECT COUNT(*) AS unread_count
+      FROM chat_messages cm
+      JOIN conversations c ON cm.conversation_id = c.id
+      WHERE (c.buyer_id = ? OR c.seller_id = ?)
+      AND cm.sender_id != ?
+      AND cm.is_read = FALSE
+      `,
+      [userId, userId, userId]
+    );
+
+    res.json({
+      unread_count: rows[0].unread_count,
+    });
+  } catch (error) {
+    console.log("getUnreadMessagesCount error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

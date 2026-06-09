@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import '../models/user_model.dart';
 import '../utils/token_storage.dart';
@@ -33,10 +35,7 @@ class AuthService {
     try {
       final response = await dio.post(
         '/auth/login',
-        data: {
-          'email': email.trim(),
-          'password': password,
-        },
+        data: {'email': email.trim(), 'password': password},
       );
 
       final data = response.data;
@@ -92,16 +91,26 @@ class AuthService {
     String? bio,
     String? location,
     String? profileImageUrl,
+    File? profileImage,
   }) async {
     try {
+      final data = FormData.fromMap({
+        'full_name': fullName.trim(),
+        'bio': bio?.trim(),
+        'location': location?.trim(),
+        // ignore: use_null_aware_elements
+        if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
+        if (profileImage != null)
+          'profile_image': await MultipartFile.fromFile(
+            profileImage.path,
+            filename: profileImage.path.split(Platform.pathSeparator).last,
+          ),
+      });
+
       final response = await dio.put(
         '/auth/profile',
-        data: {
-          'full_name': fullName.trim(),
-          'bio': bio?.trim(),
-          'location': location?.trim(),
-          'profile_image_url': profileImageUrl,
-        },
+        data: data,
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       currentUser = UserModel.fromJson(response.data['user']);
@@ -120,10 +129,7 @@ class AuthService {
 
   Future<void> forgotPassword(String email) async {
     try {
-      await dio.post(
-        '/auth/forgot-password',
-        data: {'email': email.trim()},
-      );
+      await dio.post('/auth/forgot-password', data: {'email': email.trim()});
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to send reset code',

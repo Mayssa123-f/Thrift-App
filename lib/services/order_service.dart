@@ -5,15 +5,15 @@ import 'api_client.dart';
 class OrderService {
   static final Dio dio = ApiClient.dio;
 
-  static Future<Map<String, dynamic>> createPaymentIntent() async {
-    try {
-      final response = await dio.post('/orders/payment-intent');
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to create payment',
-      );
-    }
+  static Future<Map<String, dynamic>> createPaymentIntent({
+    required String deliveryMethod,
+  }) async {
+    final response = await dio.post(
+      '/orders/payment-intent',
+      data: {'delivery_method': deliveryMethod},
+    );
+
+    return response.data;
   }
 
   static Future<Map<String, dynamic>> createOrder({
@@ -30,9 +30,7 @@ class OrderService {
       );
       return response.data;
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to place order',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to place order');
     }
   }
 
@@ -41,9 +39,7 @@ class OrderService {
       final response = await dio.get('/orders');
       return response.data['orders'] ?? [];
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to fetch orders',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to fetch orders');
     }
   }
 
@@ -57,25 +53,23 @@ class OrderService {
       );
     }
   }
+
   static Future<Map<String, dynamic>> getWallet() async {
     try {
       final response = await dio.get('/orders/wallet');
       return response.data;
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message'] ?? 'Failed to fetch wallet',
-      );
+      throw Exception(e.response?.data['message'] ?? 'Failed to fetch wallet');
     }
   }
-  static Future<OrderModel> getOrderById(int orderId) async {
-  try {
-    final response = await dio.get('/orders/$orderId');
 
-    return OrderModel.fromJson(response.data['order']);
-  } on DioException catch (e) {
-    throw Exception(
-      e.response?.data['message'] ?? 'Failed to fetch order',
-    );
+  static Future<OrderModel> getOrderById(int orderId) async {
+    try {
+      final response = await dio.get('/orders/$orderId');
+
+      return OrderModel.fromJson(response.data['order']);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Failed to fetch order');
+    }
   }
-}
 }

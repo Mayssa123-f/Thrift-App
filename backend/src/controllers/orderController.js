@@ -2,12 +2,14 @@ import Stripe from "stripe";
 import db from "../config/db.js";
 import { sendPushNotification } from "../utils/sendNotifications.js";
 import { createNotification } from "../utils/createNotification.js";
+import transporter from "../config/email.js";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // POST /api/orders/payment-intent — create Stripe PaymentIntent
 export const createPaymentIntent = async (req, res) => {
   try {
     const buyerId = req.user.id;
+    const { delivery_method } = req.body;
 
     const [cartItems] = await db.query(
       `SELECT
@@ -27,10 +29,16 @@ export const createPaymentIntent = async (req, res) => {
        JOIN products p 
         ON ci.product_id = p.id
 
-       LEFT JOIN offers ao
-        ON ao.product_id = p.id
-        AND ao.buyer_id = ?
-        AND ao.status = 'accepted'
+      LEFT JOIN offers ao
+  ON ao.id = (
+    SELECT o2.id
+    FROM offers o2
+    WHERE o2.product_id = p.id
+    AND o2.buyer_id = ?
+    AND o2.status = 'accepted'
+  ORDER BY o2.created_at DESC
+    LIMIT 1
+  )
 
        WHERE ci.buyer_id = ?`,
       [buyerId, buyerId],
@@ -56,7 +64,7 @@ export const createPaymentIntent = async (req, res) => {
       return sum + finalPrice * item.quantity;
     }, 0);
 
-    const shipping = 8.0;
+    const shipping = delivery_method === "pickup" ? 0 : 8.0;
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
     const total = parseFloat((subtotal + shipping + tax).toFixed(2));
 
@@ -87,6 +95,7 @@ export const createOrder = async (req, res) => {
     const buyerId = req.user.id;
     const { delivery_method, payment_intent_id } = req.body;
 
+    // VERIFY STRIPE PAYMENT
     if (payment_intent_id) {
       const paymentIntent =
         await stripe.paymentIntents.retrieve(payment_intent_id);
@@ -98,8 +107,10 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // GET CART ITEMS
     const [cartItems] = await db.query(
-      `SELECT
+      `
+      SELECT
         ci.id AS cart_item_id,
         ci.product_id,
         ci.quantity,
@@ -113,24 +124,34 @@ export const createOrder = async (req, res) => {
         ao.id AS accepted_offer_id,
         ao.offered_price AS accepted_offer_price
 
-       FROM cart_items ci
+      FROM cart_items ci
 
-       JOIN products p 
+      JOIN products p 
         ON ci.product_id = p.id
 
-       LEFT JOIN offers ao
-        ON ao.product_id = p.id
-        AND ao.buyer_id = ?
-        AND ao.status = 'accepted'
+      LEFT JOIN offers ao
+        ON ao.id = (
+          SELECT o2.id
+          FROM offers o2
+          WHERE o2.product_id = p.id
+          AND o2.buyer_id = ?
+          AND o2.status = 'accepted'
+          ORDER BY o2.created_at DESC
+          LIMIT 1
+        )
 
-       WHERE ci.buyer_id = ?`,
+      WHERE ci.buyer_id = ?
+      `,
       [buyerId, buyerId],
     );
 
     if (cartItems.length === 0) {
-      return res.status(400).json({ message: "Your cart is empty" });
+      return res.status(400).json({
+        message: "Your cart is empty",
+      });
     }
 
+    // CHECK AVAILABILITY
     const unavailable = cartItems.filter((item) => !item.is_available);
 
     if (unavailable.length > 0) {
@@ -139,6 +160,7 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    // CALCULATE TOTALS
     const subtotal = cartItems.reduce((sum, item) => {
       const finalPrice = item.accepted_offer_price
         ? parseFloat(item.accepted_offer_price)
@@ -147,37 +169,54 @@ export const createOrder = async (req, res) => {
       return sum + finalPrice * item.quantity;
     }, 0);
 
-    const shipping = 8.0;
+    const shipping = delivery_method === "pickup" ? 0 : 8.0;
+
     const tax = parseFloat((subtotal * 0.05).toFixed(2));
+
     const totalPrice = parseFloat((subtotal + shipping + tax).toFixed(2));
 
     const createdOrders = [];
+
+    // GET BUYER INFO
     const [buyers] = await db.query(
-      "SELECT full_name FROM users WHERE id = ?",
+      `
+      SELECT full_name, email
+      FROM users
+      WHERE id = ?
+      `,
       [buyerId],
     );
 
     const buyer = buyers[0];
 
+    if (!buyer?.email) {
+      return res.status(400).json({
+        message: "Buyer email not found",
+      });
+    }
+
+    // CREATE ORDERS
     for (const item of cartItems) {
       const finalPrice = item.accepted_offer_price
         ? parseFloat(item.accepted_offer_price)
         : parseFloat(item.price);
 
       const [result] = await db.query(
-        `INSERT INTO orders
-          (
-            buyer_id,
-            seller_id,
-            product_id,
-            total_price,
-            offer_id,
-            original_price,
-            final_price,
-            delivery_method,
-            status
-          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'accepted')`,
+        `
+        INSERT INTO orders
+        (
+          buyer_id,
+          seller_id,
+          product_id,
+          total_price,
+          offer_id,
+          original_price,
+          final_price,
+          delivery_method,
+          status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'accepted')
+        `,
         [
           buyerId,
           item.seller_id,
@@ -192,8 +231,9 @@ export const createOrder = async (req, res) => {
 
       createdOrders.push(result.insertId);
 
+      // SELLER NOTIFICATION
       const soldBody = `${item.title} was purchased by ${
-        buyer?.full_name || "a buyer"
+        buyer.full_name || "a buyer"
       }`;
 
       await createNotification({
@@ -207,6 +247,7 @@ export const createOrder = async (req, res) => {
         offerId: item.accepted_offer_id || null,
       });
 
+      // PUSH NOTIFICATION
       await sendPushNotification({
         userId: item.seller_id,
         title: "Your item was sold",
@@ -221,20 +262,250 @@ export const createOrder = async (req, res) => {
         },
       });
 
-      await db.query("UPDATE products SET is_available = FALSE WHERE id = ?", [
-        item.product_id,
-      ]);
+      // MARK PRODUCT SOLD
+      await db.query(
+        `
+        UPDATE products
+        SET is_available = FALSE
+        WHERE id = ?
+        `,
+        [item.product_id],
+      );
 
+      // MARK OFFER USED
       if (item.accepted_offer_id) {
-        await db.query("UPDATE offers SET status = 'used' WHERE id = ?", [
-          item.accepted_offer_id,
-        ]);
+        await db.query(
+          `
+          UPDATE offers
+          SET status = 'used'
+          WHERE id = ?
+          `,
+          [item.accepted_offer_id],
+        );
       }
     }
 
-    await db.query("DELETE FROM cart_items WHERE buyer_id = ?", [buyerId]);
+    // CLEAR CART
+    await db.query(
+      `
+      DELETE FROM cart_items
+      WHERE buyer_id = ?
+      `,
+      [buyerId],
+    );
 
-    res.status(201).json({
+    // SEND EMAIL
+    await transporter.sendMail({
+      from: `"Vinty" <${process.env.EMAIL_USER}>`,
+      to: buyer.email,
+      subject: "Your order is confirmed ✨",
+
+      html: `
+  <div style="
+    background:#f7f7f5;
+    padding:40px 20px;
+    font-family:Arial,sans-serif;
+    color:#111;
+  ">
+
+    <div style="
+      max-width:600px;
+      margin:0 auto;
+      background:white;
+      border-radius:24px;
+      overflow:hidden;
+      border:1px solid #ececec;
+    ">
+
+      <!-- HEADER -->
+      <div style="
+        padding:40px 30px 24px;
+        text-align:center;
+      ">
+        <h1 style="
+          margin:0;
+          font-size:42px;
+          letter-spacing:8px;
+          color:#18392b;
+        ">
+          VINTY
+        </h1>
+
+        <p style="
+          margin-top:10px;
+          color:#777;
+          font-size:13px;
+          letter-spacing:2px;
+        ">
+          PRELOVED. LOVED. AGAIN.
+        </p>
+      </div>
+
+      <!-- SUCCESS -->
+      <div style="
+        margin:0 24px;
+        background:#f3f5f2;
+        border-radius:20px;
+        padding:36px 24px;
+        text-align:center;
+      ">
+
+        <div style="
+          width:64px;
+          height:64px;
+          line-height:64px;
+          margin:0 auto 18px;
+          border-radius:50%;
+          background:#2f6f4f;
+          color:white;
+          font-size:32px;
+        ">
+          ✓
+        </div>
+
+        <h2 style="
+          margin:0;
+          font-size:34px;
+          color:#111;
+        ">
+          Order Confirmed
+        </h2>
+
+        <p style="
+          margin-top:16px;
+          font-size:16px;
+          color:#555;
+          line-height:1.6;
+        ">
+          Thanks for shopping with Vinty.<br/>
+          We’ve received your order and we’re getting it ready.
+        </p>
+      </div>
+
+      <!-- CONTENT -->
+      <div style="padding:40px 30px;">
+
+        <p style="
+          font-size:18px;
+          margin-bottom:10px;
+        ">
+          Hi ${buyer.full_name},
+        </p>
+
+        <p style="
+          color:#555;
+          line-height:1.7;
+          margin-bottom:32px;
+        ">
+          Your order has been placed successfully.
+          We’ll notify you again once your items are shipped.
+        </p>
+
+        <!-- ORDER BOX -->
+        <div style="
+          border:1px solid #ececec;
+          border-radius:18px;
+          overflow:hidden;
+        ">
+
+          <div style="
+            padding:20px 24px;
+            border-bottom:1px solid #ececec;
+            background:#fafafa;
+            font-weight:600;
+            font-size:17px;
+          ">
+            Order Summary
+          </div>
+
+          <div style="padding:24px;">
+
+            <table width="100%" cellspacing="0">
+              <tr>
+                <td style="padding-bottom:14px; color:#666;">
+                  Items
+                </td>
+
+                <td align="right" style="
+                  padding-bottom:14px;
+                  font-weight:600;
+                ">
+                  ${cartItems.length}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding-bottom:14px; color:#666;">
+                  Delivery
+                </td>
+
+                <td align="right" style="
+                  padding-bottom:14px;
+                  font-weight:600;
+                ">
+                  ${delivery_method || "delivery"}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="
+                  padding-top:18px;
+                  border-top:1px solid #ececec;
+                  font-size:18px;
+                  font-weight:700;
+                ">
+                  Total Paid
+                </td>
+
+                <td align="right" style="
+                  padding-top:18px;
+                  border-top:1px solid #ececec;
+                  font-size:22px;
+                  font-weight:700;
+                  color:#18392b;
+                ">
+                  $${totalPrice}
+                </td>
+              </tr>
+            </table>
+
+          </div>
+        </div>
+
+        <!-- FOOTER MESSAGE -->
+        <div style="
+          margin-top:32px;
+          padding:20px;
+          border-radius:16px;
+          background:#f5f7f4;
+          color:#444;
+          line-height:1.7;
+          font-size:15px;
+        ">
+          Thank you for supporting sustainable fashion ♻️
+          <br/>
+          Every pre-loved item gets a new story with Vinty.
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div style="
+        padding:28px;
+        text-align:center;
+        border-top:1px solid #ececec;
+        color:#888;
+        font-size:13px;
+      ">
+        © 2025 Vinty. All rights reserved.
+      </div>
+
+    </div>
+  </div>
+  `,
+    });
+
+    return res.status(201).json({
       message: "Order placed successfully",
       order_ids: createdOrders,
       total_price: totalPrice,
@@ -242,7 +513,10 @@ export const createOrder = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
 

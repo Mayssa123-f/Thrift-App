@@ -5,15 +5,13 @@ import 'package:thrift_app/controllers/cart_controller.dart';
 import 'package:thrift_app/controllers/product_controller.dart';
 import 'package:thrift_app/screens/order/my_order_screen.dart';
 import 'package:thrift_app/services/favorites_service.dart';
-import '../../constants/app_colors.dart';
-import '../../data/app_data.dart';
-import '../../services/listing_service.dart';
+import 'package:thrift_app/services/order_service.dart';
+
 import '../favorites/favorites_screen.dart';
 import '../cart/cart_screen.dart';
 import '../editProfile/edit_profile_screen.dart';
 import '../paymentAndCheckout/payments_payouts_screen.dart';
 import '../help/help_support.dart';
-import '../notifications/notifications_screen.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/user_model.dart';
 import '../auth/login_screen.dart';
@@ -31,432 +29,206 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   UserModel? currentUser;
   bool isLoading = true;
+
   final CartController cartController = CartController();
   final ProductController productController = ProductController();
-  int profileTab = 0; // 0 = Dashboard, 1 = Details
+
+  int profileTab = 0;
   int wishlistCount = 0;
   int cartCount = 0;
   int listingsCount = 0;
+  int salesCount = 0;
+  int sellerOrdersCount = 0;
+  int buyerOrdersCount = 0;
+  double totalRevenue = 0;
+  double totalSpent = 0;
+
   @override
   void initState() {
     super.initState();
-    _loadUser();
-    _loadAccountCounts();
+    _loadProfileData();
   }
 
-  Future<void> _loadAccountCounts() async {
+  Future<T?> _tryLoad<T>(Future<T> future) async {
     try {
-      final favorites = await FavoritesService.getFavorites();
-      final cartItems = await cartController.getCartItems();
-      final listings = await productController.getMyListings();
-
-      if (!mounted) return;
-
-      setState(() {
-        wishlistCount = favorites.length;
-        cartCount = cartItems.length;
-        listingsCount = listings.where((p) => p.isAvailable).length;
-      });
-    } catch (_) {}
+      return await future;
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> _loadUser() async {
+  Future<void> _loadProfileData() async {
     try {
       final user = await authController.getProfile();
 
       if (!mounted) return;
 
+      final shouldSetInitialMode = currentUser == null;
+
       setState(() {
         currentUser = user;
-        isLoading = false;
+        if (shouldSetInitialMode) {
+          isSellerMode = user.role == 'seller';
+        }
       });
+
+      await _loadDashboardData();
     } catch (e) {
       if (!mounted) return;
-
-      setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
+  }
+
+  Future<void> _loadDashboardData() async {
+    final favoritesFuture = _tryLoad(FavoritesService.getFavorites());
+    final cartFuture = _tryLoad(cartController.getCartItems());
+    final listingsFuture = _tryLoad(productController.getMyListings());
+    final buyerOrdersFuture = _tryLoad(OrderService.getMyOrders());
+    final sellerOrdersFuture = _tryLoad(OrderService.getSellerOrders());
+    final walletFuture = _tryLoad(OrderService.getWallet());
+
+    final favorites = await favoritesFuture ?? [];
+    final cartItems = await cartFuture ?? [];
+    final listings = await listingsFuture ?? [];
+    final buyerOrders = await buyerOrdersFuture ?? [];
+    final sellerResult = await sellerOrdersFuture ?? <String, dynamic>{};
+    final wallet = await walletFuture ?? <String, dynamic>{};
+
+    final sellerOrders = sellerResult['orders'] as List? ?? [];
+
+    final completedSales = sellerOrders.where((order) {
+      final status = (order['status'] ?? '').toString().toLowerCase();
+      return status == 'accepted' || status == 'completed';
+    }).length;
+
+    if (!mounted) return;
+
+    setState(() {
+      wishlistCount = favorites.length;
+      cartCount = cartItems.length;
+      listingsCount = listings.where((p) => p.isAvailable).length;
+      buyerOrdersCount = buyerOrders.length;
+      sellerOrdersCount = sellerOrders.length;
+      salesCount = completedSales;
+
+      totalRevenue =
+          double.tryParse(
+            (sellerResult['total_earnings'] ?? wallet['total_earned'] ?? 0)
+                .toString(),
+          ) ??
+          0;
+
+      totalSpent =
+          double.tryParse((wallet['total_spent'] ?? 0).toString()) ?? 0;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 130),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  _buildProfileHeader(),
+                  const SizedBox(height: 28),
+                  _buildProfileTabs(),
+                  const SizedBox(height: 22),
 
-      // appBar: AppBar(
-      //   backgroundColor: Colors.white,
-      //   elevation: 0,
-      //   title: Text(
-      //     'MY VINTY',
-      //     style: GoogleFonts.syne(
-      //       fontWeight: FontWeight.w800,
-      //       color: Colors.black,
-      //       fontSize: 22,
-      //       letterSpacing: -0.5,
-      //     ),
-      //   ),
-      //   actions: [
-      //     IconButton(
-      //       onPressed: () {
-      //         Navigator.push(
-      //           context,
-      //           MaterialPageRoute(
-      //             builder: (context) => const NotificationsScreen(),
-      //           ),
-      //         );
-      //       },
-      //       icon: const Icon(
-      //         Icons.notifications_none_rounded,
-      //         color: Colors.black,
-      //       ),
-      //     ),
-
-      //     const SizedBox(width: 8),
-      //   ],
-      // ),
-     body: isLoading
-    ? const Center(child: CircularProgressIndicator())
-    : SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 12),
-            _buildProfileHeader(),
-            const SizedBox(height: 24),
-            _buildProfileTabs(),
-            const SizedBox(height: 24),
-
-            if (profileTab == 0) ...[
-              _buildRevenueCard(),
-              const SizedBox(height: 26),
-              _sectionLabel('SELLER OVERVIEW'),
-              const SizedBox(height: 12),
-              _buildStatsRow(),
-              const SizedBox(height: 28),
-              _sectionLabel('QUICK ACTIONS'),
-              const SizedBox(height: 16),
-              _buildQuickActions(),
-              const SizedBox(height: 28),
-              _buildBoostCard(),
-            ] else ...[
-              _buildAccountDetails(),
-            ],
-          ],
-        ),
-      ),
+                  if (profileTab == 0) ...[
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _buildDashboard(),
+                        Positioned(
+                          right: 16,
+                          top: 16,
+                          child: _buildModeToggle(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    _buildStatsRow(),
+                    const SizedBox(height: 26),
+                    _buildPerformanceCard(),
+                  ] else ...[
+                    _buildAccountDetails(),
+                  ],
+                ],
+              ),
+            ),
     );
   }
-  Widget _buildProfileTabs() {
-  return Container(
-    padding: const EdgeInsets.all(4),
-    decoration: BoxDecoration(
-      color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Row(
-      children: [
-        _profileTabButton('Dashboard', 0),
-        _profileTabButton('Details', 1),
-      ],
-    ),
-  );
-}
-
-Widget _profileTabButton(String text, int index) {
-  final active = profileTab == index;
-
-  return Expanded(
-    child: GestureDetector(
-      onTap: () => setState(() => profileTab = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        decoration: BoxDecoration(
-          color: active ? Colors.black : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: GoogleFonts.syne(
-              color: active ? Colors.white : Colors.black45,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _buildRevenueCard() {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: Colors.black,
-      borderRadius: BorderRadius.circular(22),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Total Revenue',
-          style: GoogleFonts.inter(
-            color: Colors.white70,
-            fontSize: 13,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '\$2,450.00',
-          style: GoogleFonts.syne(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.18),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            '↑ 18% vs last month',
-            style: GoogleFonts.inter(
-              color: Colors.greenAccent,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(height: 30),
-        SizedBox(
-          height: 90,
-          child: CustomPaint(
-            painter: RevenueChartPainter(),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-Widget _buildAccountDetails() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _sectionLabel('ACCOUNT'),
-      const SizedBox(height: 12),
-
-      _menuItem(
-        Icons.favorite_outline_rounded,
-        'My Wishlist',
-        '$wishlistCount items',
-        () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const FavoritesScreen()),
-          );
-          _loadAccountCounts();
-        },
-      ),
-
-      _menuItem(
-        Icons.shopping_bag_outlined,
-        'My Cart',
-        '$cartCount items',
-        () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CartScreen()),
-          );
-          _loadAccountCounts();
-        },
-      ),
-
-      _menuItem(
-        Icons.inventory_2_outlined,
-        'My Listings',
-        '$listingsCount active',
-        () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MyListingsScreen()),
-          );
-          _loadAccountCounts();
-        },
-      ),
-
-      _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
-        );
-      }),
-
-      const SizedBox(height: 20),
-      _sectionLabel('SETTINGS'),
-      const SizedBox(height: 12),
-
-      _menuItem(Icons.person_outline_rounded, 'Edit Profile', '', () async {
-        final updated = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-        );
-
-        if (updated == true) {
-          await _loadUser();
-          await _loadAccountCounts();
-        }
-      }),
-
-      _menuItem(Icons.credit_card_outlined, 'Payments & Payouts', '', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const PaymentsPayoutsScreen()),
-        );
-      }),
-
-      _menuItem(Icons.help_outline_rounded, 'Help & Support', '', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
-        );
-      }),
-
-      const SizedBox(height: 28),
-      _buildLogoutButton(),
-    ],
-  );
-}
-Widget _buildQuickActions() {
-  final actions = [
-    [Icons.add_rounded, 'Add Listing'],
-    [Icons.inventory_2_outlined, 'Manage\nListings'],
-    [Icons.insights_rounded, 'Sales\nAnalytics'],
-    [Icons.account_balance_wallet_outlined, 'Payouts'],
-  ];
-
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: actions.map((a) {
-      return Column(
-        children: [
-          Container(
-            height: 58,
-            width: 58,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(a[0] as IconData, color: Colors.black),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            a[1] as String,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      );
-    }).toList(),
-  );
-}
-
-Widget _buildBoostCard() {
-  return Container(
-    width: double.infinity,
-    height: 150,
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF2E7D8),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Boost your listings',
-          style: GoogleFonts.playfairDisplay(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Get more views and sell faster.',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            color: Colors.black54,
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            'Promote Now',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
   Widget _buildProfileHeader() {
     return Row(
       children: [
-        Container(
-          height: 78,
-          width: 78,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.black, width: 1.5),
-            image:
-                currentUser?.profileImageUrl != null &&
-                    currentUser!.profileImageUrl!.isNotEmpty
-                ? DecorationImage(
-                    image: NetworkImage(currentUser!.profileImageUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child:
-              currentUser?.profileImageUrl == null ||
-                  currentUser!.profileImageUrl!.isEmpty
-              ? const Icon(Icons.person, size: 35, color: Colors.grey)
-              : null,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: 64,
+              width: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black26, width: 1.3),
+                image:
+                    currentUser?.profileImageUrl != null &&
+                        currentUser!.profileImageUrl!.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(currentUser!.profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child:
+                  currentUser?.profileImageUrl == null ||
+                      currentUser!.profileImageUrl!.isEmpty
+                  ? const Icon(Icons.person, size: 32, color: Colors.grey)
+                  : null,
+            ),
+            const Positioned(
+              right: 2,
+              bottom: 6,
+              child: CircleAvatar(
+                radius: 8,
+                backgroundColor: Colors.white,
+                child: CircleAvatar(
+                  radius: 5,
+                  backgroundColor: Color(0xFF27B742),
+                ),
+              ),
+            ),
+          ],
         ),
 
-        const SizedBox(width: 18),
+        const SizedBox(width: 14),
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 currentUser?.fullName ?? 'User',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.syne(
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                   color: Colors.black,
+                  letterSpacing: -1,
                 ),
               ),
               const SizedBox(height: 2),
@@ -464,11 +236,16 @@ Widget _buildBoostCard() {
                 currentUser?.role == 'seller'
                     ? 'Verified Seller'
                     : 'Casual Shopper',
-                style: GoogleFonts.inter(color: Colors.black45, fontSize: 13),
+                style: GoogleFonts.inter(
+                  color: Colors.black45,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
         ),
+
         GestureDetector(
           onTap: () async {
             final updated = await Navigator.push(
@@ -477,19 +254,20 @@ Widget _buildBoostCard() {
             );
 
             if (updated == true) {
-              await _loadUser();
-              await _loadAccountCounts();
+              await _loadProfileData();
             }
           },
           child: Container(
-            padding: const EdgeInsets.all(10),
+            height: 42,
+            width: 42,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
             ),
             child: const Icon(
               Icons.edit_outlined,
-              size: 18,
+              size: 20,
               color: Colors.black,
             ),
           ),
@@ -498,41 +276,116 @@ Widget _buildBoostCard() {
     );
   }
 
-  Widget _buildModeToggle() {
+  Widget _buildProfileTabs() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFF4F4F4),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
-          _toggleBtn('Buyer', !isSellerMode),
-          _toggleBtn('Seller', isSellerMode),
+          _profileTabButton(Icons.grid_view_rounded, 'Dashboard', 0),
+          _profileTabButton(Icons.person_outline_rounded, 'Details', 1),
         ],
       ),
     );
   }
 
-  Widget _toggleBtn(String text, bool active) {
+  Widget _profileTabButton(IconData icon, String text, int index) {
+    final active = profileTab == index;
+
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => isSellerMode = (text == 'Seller')),
+        onTap: () => setState(() => profileTab = index),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             color: active ? Colors.black : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: active ? Colors.white : Colors.black45,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                text,
+                style: GoogleFonts.syne(
+                  color: active ? Colors.white : Colors.black45,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeToggle() {
+    return Container(
+      height: 38,
+      width: 145,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          _toggleBtn(Icons.shopping_cart_outlined, 'Buyer', !isSellerMode),
+          _toggleBtn(Icons.storefront_outlined, 'Seller', isSellerMode),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleBtn(IconData icon, String text, bool active) {
+    final activeBg = text == 'Seller'
+        ? const Color(0xFFFFF3D6)
+        : const Color(0xFFEAF2FF);
+
+    final activeColor = text == 'Seller'
+        ? const Color(0xFFC47A00)
+        : const Color(0xFF2563EB);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => isSellerMode = text == 'Seller'),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          decoration: BoxDecoration(
+            color: active ? activeBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
           ),
           child: Center(
-            child: Text(
-              text,
-              style: GoogleFonts.syne(
-                color: active ? Colors.white : Colors.black45,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 13,
+                  color: active ? activeColor : Colors.white60,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  text,
+                  style: GoogleFonts.inter(
+                    color: active ? activeColor : Colors.white60,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -540,65 +393,184 @@ Widget _buildBoostCard() {
     );
   }
 
-  Widget _buildDashboardLabel() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          isSellerMode ? 'SELLER DASHBOARD' : 'BUYER ACTIVITY',
-          style: GoogleFonts.syne(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-            color: Colors.black45,
+  Widget _buildDashboard() {
+    final amount = isSellerMode ? totalRevenue : totalSpent;
+
+    return Container(
+  width: double.infinity,
+  padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(24),
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: isSellerMode
+          ? [
+              const Color(0xFF111111),
+              const Color(0xFF080808),
+              const Color(0xFF1F1400),
+            ]
+          : [
+              const Color(0xFF111111),
+              const Color(0xFF080808),
+              const Color(0xFF07101F),
+            ],
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.12),
+        blurRadius: 24,
+        offset: const Offset(0, 12),
+      ),
+    ],
+  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isSellerMode ? 'Total Revenue' : 'Total Spent',
+            style: GoogleFonts.inter(
+              color: Colors.white60,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+
+          const SizedBox(height: 26),
+
+          Text(
+            _formatCurrency(amount),
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 44,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -1,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSellerMode
+                  ? const Color(0xFF3B2600)
+                  : const Color(0xFF0B1E3A),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Text(
+              isSellerMode
+                  ? '$salesCount completed sales'
+                  : '$buyerOrdersCount purchases',
+              style: GoogleFonts.inter(
+                color: isSellerMode
+                    ? const Color(0xFFFFD37A)
+                    : const Color(0xFF8CB8FF),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStatsRow() {
     final stats = isSellerMode
         ? [
-            {'label': 'Listings', 'value': '${ListingService.all.length}'},
-            {'label': 'Sales', 'value': '28'},
-            {'label': 'Views', 'value': '340'},
+            {
+              'label': 'Listings',
+              'value': listingsCount.toString(),
+              'icon': Icons.local_offer_outlined,
+            },
+            {
+              'label': 'Sales',
+              'value': salesCount.toString(),
+              'icon': Icons.shopping_bag_outlined,
+            },
+            {
+              'label': 'Orders',
+              'value': sellerOrdersCount.toString(),
+              'icon': Icons.inventory_2_outlined,
+            },
           ]
         : [
-            {'label': 'Saved', 'value': '${AppData.favorites.length}'},
-            {'label': 'Cart', 'value': '${AppData.cart.length}'},
-            {'label': 'Orders', 'value': '5'},
+            {
+              'label': 'Saved',
+              'value': wishlistCount.toString(),
+              'icon': Icons.favorite_border_rounded,
+            },
+            {
+              'label': 'Cart',
+              'value': cartCount.toString(),
+              'icon': Icons.shopping_bag_outlined,
+            },
+            {
+              'label': 'Orders',
+              'value': buyerOrdersCount.toString(),
+              'icon': Icons.inventory_2_outlined,
+            },
           ];
 
     return Row(
       children: stats.map((s) {
         return Expanded(
           child: Container(
-            margin: EdgeInsets.only(right: s == stats.last ? 0 : 10),
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            margin: EdgeInsets.only(right: s == stats.last ? 0 : 12),
+            padding: const EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade100),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Text(
-                  s['value']!,
-                  style: GoogleFonts.syne(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color: isSellerMode
+                        ? const Color(0xFFFFF8E8)
+                        : const Color(0xFFEAF2FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    s['icon'] as IconData,
+                    color: isSellerMode
+                        ? const Color(0xFFC47A00)
+                        : const Color(0xFF2563EB),
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 4),
+
+                const SizedBox(height: 14),
+
                 Text(
-                  s['label']!.toUpperCase(),
-                  style: GoogleFonts.syne(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black38,
-                    letterSpacing: 0.5,
+                  s['value'] as String,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                    height: 1,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  s['label'] as String,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black45,
                   ),
                 ),
               ],
@@ -609,15 +581,174 @@ Widget _buildBoostCard() {
     );
   }
 
-  Widget _sectionLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.syne(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: Colors.black38,
-        letterSpacing: 1,
+  Widget _buildPerformanceCard() {
+    final bgColor =
+        isSellerMode ? const Color(0xFFFFF8E8) : const Color(0xFFEAF2FF);
+    final borderColor =
+        isSellerMode ? const Color(0xFFFFE6A8) : const Color(0xFFD4E4FF);
+    final iconColor =
+        isSellerMode ? const Color(0xFFC47A00) : const Color(0xFF2563EB);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
       ),
+      child: Row(
+        children: [
+          Container(
+            height: 58,
+            width: 58,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor),
+            ),
+            child: Icon(
+              Icons.workspace_premium_rounded,
+              color: iconColor,
+              size: 28,
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSellerMode
+                      ? 'Keep up the great work!'
+                      : 'Your style is growing!',
+                  style: GoogleFonts.syne(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isSellerMode
+                      ? "You're performing better than 85% of sellers."
+                      : "You have $wishlistCount saved items waiting.",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 18,
+            color: Colors.black,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('ACCOUNT'),
+        const SizedBox(height: 12),
+
+        _menuItem(
+          Icons.favorite_outline_rounded,
+          'My Wishlist',
+          '$wishlistCount items',
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+            );
+            _loadDashboardData();
+          },
+        ),
+
+        _menuItem(
+          Icons.shopping_bag_outlined,
+          'My Cart',
+          '$cartCount items',
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartScreen()),
+            );
+            _loadDashboardData();
+          },
+        ),
+
+        _menuItem(
+          Icons.inventory_2_outlined,
+          'My Listings',
+          '$listingsCount active',
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyListingsScreen()),
+            );
+            _loadDashboardData();
+          },
+        ),
+
+        _menuItem(Icons.shopping_bag_outlined, 'My Orders', '', () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+          );
+          _loadDashboardData();
+        }),
+
+        const SizedBox(height: 22),
+
+        _sectionLabel('SETTINGS'),
+        const SizedBox(height: 12),
+
+        _menuItem(Icons.person_outline_rounded, 'Edit Profile', '', () async {
+          final updated = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+          );
+
+          if (updated == true) {
+            await _loadProfileData();
+          }
+        }),
+
+        _menuItem(
+          Icons.credit_card_outlined,
+          'Payments & Payouts',
+          '',
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PaymentsPayoutsScreen()),
+            );
+            _loadDashboardData();
+          },
+        ),
+
+        _menuItem(Icons.help_outline_rounded, 'Help & Support', '', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+          );
+        }),
+
+        const SizedBox(height: 28),
+
+        _buildLogoutButton(),
+      ],
     );
   }
 
@@ -630,27 +761,45 @@ Widget _buildBoostCard() {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.025),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.black, size: 20),
+            Container(
+              height: 38,
+              width: 38,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF5F5F5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.black, size: 20),
+            ),
+
             const SizedBox(width: 14),
+
             Expanded(
               child: Text(
                 title,
                 style: GoogleFonts.syne(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: Colors.black,
                 ),
               ),
             ),
+
             if (subtitle.isNotEmpty)
               Text(
                 subtitle,
@@ -660,7 +809,9 @@ Widget _buildBoostCard() {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+
             const SizedBox(width: 8),
+
             const Icon(
               Icons.arrow_forward_ios_rounded,
               size: 13,
@@ -668,6 +819,18 @@ Widget _buildBoostCard() {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.syne(
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+        color: Colors.black38,
+        letterSpacing: 1.4,
       ),
     );
   }
@@ -690,7 +853,7 @@ Widget _buildBoostCard() {
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.red.shade100),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
           child: Text(
@@ -706,43 +869,14 @@ Widget _buildBoostCard() {
       ),
     );
   }
-}
-class RevenueChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2.4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
 
-    final dotPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
+  String _formatCurrency(double value) {
+    final parts = value.toStringAsFixed(2).split('.');
+    final whole = parts[0].replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => ',',
+    );
 
-    final points = [
-      Offset(0, size.height * 0.75),
-      Offset(size.width * 0.18, size.height * 0.45),
-      Offset(size.width * 0.32, size.height * 0.70),
-      Offset(size.width * 0.50, size.height * 0.35),
-      Offset(size.width * 0.68, size.height * 0.58),
-      Offset(size.width * 0.82, size.height * 0.40),
-      Offset(size.width, size.height * 0.12),
-    ];
-
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-
-    for (int i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-
-    canvas.drawPath(path, paint);
-
-    for (final point in points) {
-      canvas.drawCircle(point, 3.2, dotPaint);
-    }
+    return '\$$whole.${parts[1]}';
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

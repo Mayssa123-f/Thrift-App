@@ -160,6 +160,18 @@ export const acceptOffer = async (req, res) => {
       });
     }
 
+    await db.query(
+      `
+  UPDATE offers
+  SET status = 'expired'
+  WHERE buyer_id = ?
+  AND product_id = ?
+  AND id != ?
+  AND status IN ('pending', 'accepted')
+  `,
+      [offer.buyer_id, offer.product_id, offerId],
+    );
+
     await db.query("UPDATE offers SET status = 'accepted' WHERE id = ?", [
       offerId,
     ]);

@@ -185,15 +185,22 @@ export const getUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { full_name, bio, location, profile_image_url } = req.body;
+    const uploadedProfileImageUrl = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      : null;
 
     await db.query(
       `UPDATE users
-       SET full_name = ?, bio = ?, location = ?, profile_image_url = ?
+       SET full_name = ?,
+           bio = ?,
+           location = ?,
+           profile_image_url = COALESCE(?, NULLIF(?, ''), profile_image_url)
        WHERE id = ?`,
       [
         full_name,
         bio || null,
         location || null,
+        uploadedProfileImageUrl,
         profile_image_url || null,
         req.user.id,
       ],

@@ -540,9 +540,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   product.formattedPrice,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.inter(
                     color: AppColors.black,
-                    fontSize: 20,
+                    fontSize: 25,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
